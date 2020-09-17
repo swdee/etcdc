@@ -21,12 +21,12 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/clientv3/concurrency"
+	"github.com/swdee/etcdc"
+	"github.com/swdee/etcdc/concurrency"
 )
 
 func ExampleElection_Campaign() {
-	cli, err := clientv3.New(clientv3.Config{Endpoints: endpoints})
+	cli, err := etcdc.New(etcdc.Config{Endpoints: endpoints})
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package clientv3_test
+package etcdc_test
 
 import (
 	"context"
 	"fmt"
 	"log"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 )
 
 func ExampleAuth() {
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := etcdc.New(etcdc.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 	})
@@ -51,7 +51,7 @@ func ExampleAuth() {
 		"r",   // role name
 		"foo", // key
 		"zoo", // range end
-		clientv3.PermissionType(clientv3.PermReadWrite),
+		etcdc.PermissionType(etcdc.PermReadWrite),
 	); err != nil {
 		log.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func ExampleAuth() {
 		log.Fatal(err)
 	}
 
-	cliAuth, err := clientv3.New(clientv3.Config{
+	cliAuth, err := etcdc.New(etcdc.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 		Username:    "u",
@@ -81,14 +81,14 @@ func ExampleAuth() {
 	}
 
 	_, err = cliAuth.Txn(context.TODO()).
-		If(clientv3.Compare(clientv3.Value("zoo1"), ">", "abc")).
-		Then(clientv3.OpPut("zoo1", "XYZ")).
-		Else(clientv3.OpPut("zoo1", "ABC")).
+		If(etcdc.Compare(etcdc.Value("zoo1"), ">", "abc")).
+		Then(etcdc.OpPut("zoo1", "XYZ")).
+		Else(etcdc.OpPut("zoo1", "ABC")).
 		Commit()
 	fmt.Println(err)
 
 	// now check the permission with the root account
-	rootCli, err := clientv3.New(clientv3.Config{
+	rootCli, err := etcdc.New(etcdc.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 		Username:    "root",

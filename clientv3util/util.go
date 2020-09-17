@@ -12,22 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package clientv3util contains utility functions derived from clientv3.
-package clientv3util
+// Package etcdc.til contains utility functions derived from etcdc.
+package etcdc.til
 
 import (
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 )
 
 // KeyExists returns a comparison operation that evaluates to true iff the given
 // key exists. It does this by checking if the key `Version` is greater than 0.
 // It is a useful guard in transaction delete operations.
-func KeyExists(key string) clientv3.Cmp {
-	return clientv3.Compare(clientv3.Version(key), ">", 0)
+func KeyExists(key string) etcdc.Cmp {
+	return etcdc.Compare(etcdc.Version(key), ">", 0)
 }
 
 // KeyMissing returns a comparison operation that evaluates to true iff the
 // given key does not exist.
-func KeyMissing(key string) clientv3.Cmp {
-	return clientv3.Compare(clientv3.Version(key), "=", 0)
+func KeyMissing(key string) etcdc.Cmp {
+	return etcdc.Compare(etcdc.Version(key), "=", 0)
 }

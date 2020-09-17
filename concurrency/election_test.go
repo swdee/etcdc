@@ -21,14 +21,14 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/clientv3/concurrency"
+	"github.com/swdee/etcdc"
+	"github.com/swdee/etcdc/concurrency"
 )
 
 func TestResumeElection(t *testing.T) {
 	const prefix = "/resume-election/"
 
-	cli, err := clientv3.New(clientv3.Config{Endpoints: endpoints})
+	cli, err := etcdc.New(etcdc.Config{Endpoints: endpoints})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestResumeElection(t *testing.T) {
 	}
 
 	// get the leadership details of the current election
-	var leader *clientv3.GetResponse
+	var leader *etcdc.GetResponse
 	leader, err = e.Leader(ctx)
 	if err != nil {
 		t.Fatalf("Leader() returned non nil err: %s", err)
@@ -63,7 +63,7 @@ func TestResumeElection(t *testing.T) {
 	e = concurrency.ResumeElection(s, prefix,
 		string(leader.Kvs[0].Key), leader.Kvs[0].CreateRevision)
 
-	respChan := make(chan *clientv3.GetResponse)
+	respChan := make(chan *etcdc.GetResponse)
 	go func() {
 		o := e.Observe(ctx)
 		respChan <- nil

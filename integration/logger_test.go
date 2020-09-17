@@ -17,11 +17,11 @@ package integration
 import (
 	"io/ioutil"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 
 	"google.golang.org/grpc/grpclog"
 )
 
 func init() {
-	clientv3.SetLogger(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
+	etcdc.SetLogger(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
 }

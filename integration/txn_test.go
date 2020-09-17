@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 	"go.etcd.io/etcd/embed"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"go.etcd.io/etcd/integration"
@@ -36,14 +36,14 @@ func TestTxnError(t *testing.T) {
 	kv := clus.RandClient()
 	ctx := context.TODO()
 
-	_, err := kv.Txn(ctx).Then(clientv3.OpPut("foo", "bar1"), clientv3.OpPut("foo", "bar2")).Commit()
+	_, err := kv.Txn(ctx).Then(etcdc.OpPut("foo", "bar1"), etcdc.OpPut("foo", "bar2")).Commit()
 	if err != rpctypes.ErrDuplicateKey {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrDuplicateKey, err)
 	}
 
-	ops := make([]clientv3.Op, int(embed.DefaultMaxTxnOps+10))
+	ops := make([]etcdc.Op, int(embed.DefaultMaxTxnOps+10))
 	for i := range ops {
-		ops[i] = clientv3.OpPut(fmt.Sprintf("foo%d", i), "")
+		ops[i] = etcdc.OpPut(fmt.Sprintf("foo%d", i), "")
 	}
 	_, err = kv.Txn(ctx).Then(ops...).Commit()
 	if err != rpctypes.ErrTooManyOps {
@@ -65,7 +65,7 @@ func TestTxnWriteFail(t *testing.T) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
 		defer cancel()
-		resp, err := kv.Txn(ctx).Then(clientv3.OpPut("foo", "bar")).Commit()
+		resp, err := kv.Txn(ctx).Then(etcdc.OpPut("foo", "bar")).Commit()
 		if err == nil {
 			t.Errorf("expected error, got response %v", resp)
 		}
@@ -109,10 +109,10 @@ func TestTxnReadRetry(t *testing.T) {
 
 	kv := clus.Client(0)
 
-	thenOps := [][]clientv3.Op{
-		{clientv3.OpGet("foo")},
-		{clientv3.OpTxn(nil, []clientv3.Op{clientv3.OpGet("foo")}, nil)},
-		{clientv3.OpTxn(nil, nil, nil)},
+	thenOps := [][]etcdc.Op{
+		{etcdc.OpGet("foo")},
+		{etcdc.OpTxn(nil, []etcdc.Op{etcdc.OpGet("foo")}, nil)},
+		{etcdc.OpTxn(nil, nil, nil)},
 		{},
 	}
 	for i := range thenOps {
@@ -149,7 +149,7 @@ func TestTxnSuccess(t *testing.T) {
 	kv := clus.Client(0)
 	ctx := context.TODO()
 
-	_, err := kv.Txn(ctx).Then(clientv3.OpPut("foo", "bar")).Commit()
+	_, err := kv.Txn(ctx).Then(etcdc.OpPut("foo", "bar")).Commit()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,8 +178,8 @@ func TestTxnCompareRange(t *testing.T) {
 		t.Fatal(err)
 	}
 	tresp, terr := kv.Txn(context.TODO()).If(
-		clientv3.Compare(
-			clientv3.CreateRevision("foo/"), "=", fooResp.Header.Revision).
+		etcdc.Compare(
+			etcdc.CreateRevision("foo/"), "=", fooResp.Header.Revision).
 			WithPrefix(),
 	).Commit()
 	if terr != nil {
@@ -199,11 +199,11 @@ func TestTxnNested(t *testing.T) {
 	kv := clus.Client(0)
 
 	tresp, err := kv.Txn(context.TODO()).
-		If(clientv3.Compare(clientv3.Version("foo"), "=", 0)).
+		If(etcdc.Compare(etcdc.Version("foo"), "=", 0)).
 		Then(
-			clientv3.OpPut("foo", "bar"),
-			clientv3.OpTxn(nil, []clientv3.Op{clientv3.OpPut("abc", "123")}, nil)).
-		Else(clientv3.OpPut("foo", "baz")).Commit()
+			etcdc.OpPut("foo", "bar"),
+			etcdc.OpTxn(nil, []etcdc.Op{etcdc.OpPut("abc", "123")}, nil)).
+		Else(etcdc.OpPut("foo", "baz")).Commit()
 	if err != nil {
 		t.Fatal(err)
 	}

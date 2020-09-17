@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package clientv3
+package etcdc
 
 import (
 	"math"
@@ -57,8 +57,8 @@ var (
 )
 
 // defaultCallOpts defines a list of default "gRPC.CallOption".
-// Some options are exposed to "clientv3.Config".
-// Defaults will be overridden by the settings in "clientv3.Config".
+// Some options are exposed to "etcdc.Config".
+// Defaults will be overridden by the settings in "etcdc.Config".
 var defaultCallOpts = []grpc.CallOption{defaultFailFast, defaultMaxCallSendMsgSize, defaultMaxCallRecvMsgSize}
 
 // MaxLeaseTTL is the maximum lease TTL value

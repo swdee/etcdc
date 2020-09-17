@@ -17,27 +17,27 @@ package namespace
 import (
 	"context"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 )
 
 type kvPrefix struct {
-	clientv3.KV
+	etcdc.KV
 	pfx string
 }
 
 // NewKV wraps a KV instance so that all requests
 // are prefixed with a given string.
-func NewKV(kv clientv3.KV, prefix string) clientv3.KV {
+func NewKV(kv etcdc.KV, prefix string) etcdc.KV {
 	return &kvPrefix{kv, prefix}
 }
 
-func (kv *kvPrefix) Put(ctx context.Context, key, val string, opts ...clientv3.OpOption) (*clientv3.PutResponse, error) {
+func (kv *kvPrefix) Put(ctx context.Context, key, val string, opts ...etcdc.OpOption) (*etcdc.PutResponse, error) {
 	if len(key) == 0 {
 		return nil, rpctypes.ErrEmptyKey
 	}
-	op := kv.prefixOp(clientv3.OpPut(key, val, opts...))
+	op := kv.prefixOp(etcdc.OpPut(key, val, opts...))
 	r, err := kv.KV.Do(ctx, op)
 	if err != nil {
 		return nil, err
@@ -47,11 +47,11 @@ func (kv *kvPrefix) Put(ctx context.Context, key, val string, opts ...clientv3.O
 	return put, nil
 }
 
-func (kv *kvPrefix) Get(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error) {
+func (kv *kvPrefix) Get(ctx context.Context, key string, opts ...etcdc.OpOption) (*etcdc.GetResponse, error) {
 	if len(key) == 0 {
 		return nil, rpctypes.ErrEmptyKey
 	}
-	r, err := kv.KV.Do(ctx, kv.prefixOp(clientv3.OpGet(key, opts...)))
+	r, err := kv.KV.Do(ctx, kv.prefixOp(etcdc.OpGet(key, opts...)))
 	if err != nil {
 		return nil, err
 	}
@@ -60,11 +60,11 @@ func (kv *kvPrefix) Get(ctx context.Context, key string, opts ...clientv3.OpOpti
 	return get, nil
 }
 
-func (kv *kvPrefix) Delete(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.DeleteResponse, error) {
+func (kv *kvPrefix) Delete(ctx context.Context, key string, opts ...etcdc.OpOption) (*etcdc.DeleteResponse, error) {
 	if len(key) == 0 {
 		return nil, rpctypes.ErrEmptyKey
 	}
-	r, err := kv.KV.Do(ctx, kv.prefixOp(clientv3.OpDelete(key, opts...)))
+	r, err := kv.KV.Do(ctx, kv.prefixOp(etcdc.OpDelete(key, opts...)))
 	if err != nil {
 		return nil, err
 	}
@@ -73,9 +73,9 @@ func (kv *kvPrefix) Delete(ctx context.Context, key string, opts ...clientv3.OpO
 	return del, nil
 }
 
-func (kv *kvPrefix) Do(ctx context.Context, op clientv3.Op) (clientv3.OpResponse, error) {
+func (kv *kvPrefix) Do(ctx context.Context, op etcdc.Op) (etcdc.OpResponse, error) {
 	if len(op.KeyBytes()) == 0 && !op.IsTxn() {
-		return clientv3.OpResponse{}, rpctypes.ErrEmptyKey
+		return etcdc.OpResponse{}, rpctypes.ErrEmptyKey
 	}
 	r, err := kv.KV.Do(ctx, kv.prefixOp(op))
 	if err != nil {
@@ -95,30 +95,30 @@ func (kv *kvPrefix) Do(ctx context.Context, op clientv3.Op) (clientv3.OpResponse
 }
 
 type txnPrefix struct {
-	clientv3.Txn
+	etcdc.Txn
 	kv *kvPrefix
 }
 
-func (kv *kvPrefix) Txn(ctx context.Context) clientv3.Txn {
+func (kv *kvPrefix) Txn(ctx context.Context) etcdc.Txn {
 	return &txnPrefix{kv.KV.Txn(ctx), kv}
 }
 
-func (txn *txnPrefix) If(cs ...clientv3.Cmp) clientv3.Txn {
+func (txn *txnPrefix) If(cs ...etcdc.Cmp) etcdc.Txn {
 	txn.Txn = txn.Txn.If(txn.kv.prefixCmps(cs)...)
 	return txn
 }
 
-func (txn *txnPrefix) Then(ops ...clientv3.Op) clientv3.Txn {
+func (txn *txnPrefix) Then(ops ...etcdc.Op) etcdc.Txn {
 	txn.Txn = txn.Txn.Then(txn.kv.prefixOps(ops)...)
 	return txn
 }
 
-func (txn *txnPrefix) Else(ops ...clientv3.Op) clientv3.Txn {
+func (txn *txnPrefix) Else(ops ...etcdc.Op) etcdc.Txn {
 	txn.Txn = txn.Txn.Else(txn.kv.prefixOps(ops)...)
 	return txn
 }
 
-func (txn *txnPrefix) Commit() (*clientv3.TxnResponse, error) {
+func (txn *txnPrefix) Commit() (*etcdc.TxnResponse, error) {
 	resp, err := txn.Txn.Commit()
 	if err != nil {
 		return nil, err
@@ -127,7 +127,7 @@ func (txn *txnPrefix) Commit() (*clientv3.TxnResponse, error) {
 	return resp, nil
 }
 
-func (kv *kvPrefix) prefixOp(op clientv3.Op) clientv3.Op {
+func (kv *kvPrefix) prefixOp(op etcdc.Op) etcdc.Op {
 	if !op.IsTxn() {
 		begin, end := kv.prefixInterval(op.KeyBytes(), op.RangeBytes())
 		op.WithKeyBytes(begin)
@@ -135,45 +135,45 @@ func (kv *kvPrefix) prefixOp(op clientv3.Op) clientv3.Op {
 		return op
 	}
 	cmps, thenOps, elseOps := op.Txn()
-	return clientv3.OpTxn(kv.prefixCmps(cmps), kv.prefixOps(thenOps), kv.prefixOps(elseOps))
+	return etcdc.OpTxn(kv.prefixCmps(cmps), kv.prefixOps(thenOps), kv.prefixOps(elseOps))
 }
 
-func (kv *kvPrefix) unprefixGetResponse(resp *clientv3.GetResponse) {
+func (kv *kvPrefix) unprefixGetResponse(resp *etcdc.GetResponse) {
 	for i := range resp.Kvs {
 		resp.Kvs[i].Key = resp.Kvs[i].Key[len(kv.pfx):]
 	}
 }
 
-func (kv *kvPrefix) unprefixPutResponse(resp *clientv3.PutResponse) {
+func (kv *kvPrefix) unprefixPutResponse(resp *etcdc.PutResponse) {
 	if resp.PrevKv != nil {
 		resp.PrevKv.Key = resp.PrevKv.Key[len(kv.pfx):]
 	}
 }
 
-func (kv *kvPrefix) unprefixDeleteResponse(resp *clientv3.DeleteResponse) {
+func (kv *kvPrefix) unprefixDeleteResponse(resp *etcdc.DeleteResponse) {
 	for i := range resp.PrevKvs {
 		resp.PrevKvs[i].Key = resp.PrevKvs[i].Key[len(kv.pfx):]
 	}
 }
 
-func (kv *kvPrefix) unprefixTxnResponse(resp *clientv3.TxnResponse) {
+func (kv *kvPrefix) unprefixTxnResponse(resp *etcdc.TxnResponse) {
 	for _, r := range resp.Responses {
 		switch tv := r.Response.(type) {
 		case *pb.ResponseOp_ResponseRange:
 			if tv.ResponseRange != nil {
-				kv.unprefixGetResponse((*clientv3.GetResponse)(tv.ResponseRange))
+				kv.unprefixGetResponse((*etcdc.GetResponse)(tv.ResponseRange))
 			}
 		case *pb.ResponseOp_ResponsePut:
 			if tv.ResponsePut != nil {
-				kv.unprefixPutResponse((*clientv3.PutResponse)(tv.ResponsePut))
+				kv.unprefixPutResponse((*etcdc.PutResponse)(tv.ResponsePut))
 			}
 		case *pb.ResponseOp_ResponseDeleteRange:
 			if tv.ResponseDeleteRange != nil {
-				kv.unprefixDeleteResponse((*clientv3.DeleteResponse)(tv.ResponseDeleteRange))
+				kv.unprefixDeleteResponse((*etcdc.DeleteResponse)(tv.ResponseDeleteRange))
 			}
 		case *pb.ResponseOp_ResponseTxn:
 			if tv.ResponseTxn != nil {
-				kv.unprefixTxnResponse((*clientv3.TxnResponse)(tv.ResponseTxn))
+				kv.unprefixTxnResponse((*etcdc.TxnResponse)(tv.ResponseTxn))
 			}
 		default:
 		}
@@ -184,8 +184,8 @@ func (kv *kvPrefix) prefixInterval(key, end []byte) (pfxKey []byte, pfxEnd []byt
 	return prefixInterval(kv.pfx, key, end)
 }
 
-func (kv *kvPrefix) prefixCmps(cs []clientv3.Cmp) []clientv3.Cmp {
-	newCmps := make([]clientv3.Cmp, len(cs))
+func (kv *kvPrefix) prefixCmps(cs []etcdc.Cmp) []etcdc.Cmp {
+	newCmps := make([]etcdc.Cmp, len(cs))
 	for i := range cs {
 		newCmps[i] = cs[i]
 		pfxKey, endKey := kv.prefixInterval(cs[i].KeyBytes(), cs[i].RangeEnd)
@@ -197,8 +197,8 @@ func (kv *kvPrefix) prefixCmps(cs []clientv3.Cmp) []clientv3.Cmp {
 	return newCmps
 }
 
-func (kv *kvPrefix) prefixOps(ops []clientv3.Op) []clientv3.Op {
-	newOps := make([]clientv3.Op, len(ops))
+func (kv *kvPrefix) prefixOps(ops []etcdc.Op) []etcdc.Op {
+	newOps := make([]etcdc.Op, len(ops))
 	for i := range ops {
 		newOps[i] = kv.prefixOp(ops[i])
 	}

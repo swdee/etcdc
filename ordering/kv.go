@@ -18,20 +18,20 @@ import (
 	"context"
 	"sync"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 )
 
 // kvOrdering ensures that serialized requests do not return
 // get with revisions less than the previous
 // returned revision.
 type kvOrdering struct {
-	clientv3.KV
+	etcdc.KV
 	orderViolationFunc OrderViolationFunc
 	prevRev            int64
 	revMu              sync.RWMutex
 }
 
-func NewKV(kv clientv3.KV, orderViolationFunc OrderViolationFunc) *kvOrdering {
+func NewKV(kv etcdc.KV, orderViolationFunc OrderViolationFunc) *kvOrdering {
 	return &kvOrdering{kv, orderViolationFunc, 0, sync.RWMutex{}}
 }
 
@@ -49,13 +49,13 @@ func (kv *kvOrdering) setPrevRev(currRev int64) {
 	}
 }
 
-func (kv *kvOrdering) Get(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error) {
+func (kv *kvOrdering) Get(ctx context.Context, key string, opts ...etcdc.OpOption) (*etcdc.GetResponse, error) {
 	// prevRev is stored in a local variable in order to record the prevRev
 	// at the beginning of the Get operation, because concurrent
 	// access to kvOrdering could change the prevRev field in the
 	// middle of the Get operation.
 	prevRev := kv.getPrevRev()
-	op := clientv3.OpGet(key, opts...)
+	op := etcdc.OpGet(key, opts...)
 	for {
 		r, err := kv.KV.Do(ctx, op)
 		if err != nil {
@@ -75,15 +75,15 @@ func (kv *kvOrdering) Get(ctx context.Context, key string, opts ...clientv3.OpOp
 	}
 }
 
-func (kv *kvOrdering) Txn(ctx context.Context) clientv3.Txn {
+func (kv *kvOrdering) Txn(ctx context.Context) etcdc.Txn {
 	return &txnOrdering{
 		kv.KV.Txn(ctx),
 		kv,
 		ctx,
 		sync.Mutex{},
-		[]clientv3.Cmp{},
-		[]clientv3.Op{},
-		[]clientv3.Op{},
+		[]etcdc.Cmp{},
+		[]etcdc.Op{},
+		[]etcdc.Op{},
 	}
 }
 
@@ -91,16 +91,16 @@ func (kv *kvOrdering) Txn(ctx context.Context) clientv3.Txn {
 // txn responses with revisions less than the previous
 // returned revision.
 type txnOrdering struct {
-	clientv3.Txn
+	etcdc.Txn
 	*kvOrdering
 	ctx     context.Context
 	mu      sync.Mutex
-	cmps    []clientv3.Cmp
-	thenOps []clientv3.Op
-	elseOps []clientv3.Op
+	cmps    []etcdc.Cmp
+	thenOps []etcdc.Op
+	elseOps []etcdc.Op
 }
 
-func (txn *txnOrdering) If(cs ...clientv3.Cmp) clientv3.Txn {
+func (txn *txnOrdering) If(cs ...etcdc.Cmp) etcdc.Txn {
 	txn.mu.Lock()
 	defer txn.mu.Unlock()
 	txn.cmps = cs
@@ -108,7 +108,7 @@ func (txn *txnOrdering) If(cs ...clientv3.Cmp) clientv3.Txn {
 	return txn
 }
 
-func (txn *txnOrdering) Then(ops ...clientv3.Op) clientv3.Txn {
+func (txn *txnOrdering) Then(ops ...etcdc.Op) etcdc.Txn {
 	txn.mu.Lock()
 	defer txn.mu.Unlock()
 	txn.thenOps = ops
@@ -116,7 +116,7 @@ func (txn *txnOrdering) Then(ops ...clientv3.Op) clientv3.Txn {
 	return txn
 }
 
-func (txn *txnOrdering) Else(ops ...clientv3.Op) clientv3.Txn {
+func (txn *txnOrdering) Else(ops ...etcdc.Op) etcdc.Txn {
 	txn.mu.Lock()
 	defer txn.mu.Unlock()
 	txn.elseOps = ops
@@ -124,13 +124,13 @@ func (txn *txnOrdering) Else(ops ...clientv3.Op) clientv3.Txn {
 	return txn
 }
 
-func (txn *txnOrdering) Commit() (*clientv3.TxnResponse, error) {
+func (txn *txnOrdering) Commit() (*etcdc.TxnResponse, error) {
 	// prevRev is stored in a local variable in order to record the prevRev
 	// at the beginning of the Commit operation, because concurrent
 	// access to txnOrdering could change the prevRev field in the
 	// middle of the Commit operation.
 	prevRev := txn.getPrevRev()
-	opTxn := clientv3.OpTxn(txn.cmps, txn.thenOps, txn.elseOps)
+	opTxn := etcdc.OpTxn(txn.cmps, txn.thenOps, txn.elseOps)
 	for {
 		opResp, err := txn.KV.Do(txn.ctx, opTxn)
 		if err != nil {

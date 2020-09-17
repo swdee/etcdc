@@ -25,7 +25,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 	"go.etcd.io/etcd/embed"
 	"go.etcd.io/etcd/pkg/fileutil"
 	"go.etcd.io/etcd/pkg/testutil"
@@ -86,14 +86,14 @@ func TestSnapshotV3RestoreSingle(t *testing.T) {
 		t.Fatalf("failed to start restored etcd member")
 	}
 
-	var cli *clientv3.Client
-	cli, err = clientv3.New(clientv3.Config{Endpoints: []string{cfg.ACUrls[0].String()}})
+	var cli *etcdc.Client
+	cli, err = etcdc.New(etcdc.Config{Endpoints: []string{cfg.ACUrls[0].String()}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer cli.Close()
 	for i := range kvs {
-		var gresp *clientv3.GetResponse
+		var gresp *etcdc.GetResponse
 		gresp, err = cli.Get(context.Background(), kvs[i].k)
 		if err != nil {
 			t.Fatal(err)
@@ -125,13 +125,13 @@ func TestSnapshotV3RestoreMulti(t *testing.T) {
 	time.Sleep(time.Second)
 
 	for i := 0; i < clusterN; i++ {
-		cli, err := clientv3.New(clientv3.Config{Endpoints: []string{cURLs[i].String()}})
+		cli, err := etcdc.New(etcdc.Config{Endpoints: []string{cURLs[i].String()}})
 		if err != nil {
 			t.Fatal(err)
 		}
 		defer cli.Close()
 		for i := range kvs {
-			var gresp *clientv3.GetResponse
+			var gresp *etcdc.GetResponse
 			gresp, err = cli.Get(context.Background(), kvs[i].k)
 			if err != nil {
 				t.Fatal(err)
@@ -221,8 +221,8 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 		t.Fatalf("failed to start embed.Etcd for creating snapshots")
 	}
 
-	ccfg := clientv3.Config{Endpoints: []string{cfg.ACUrls[0].String()}}
-	cli, err := clientv3.New(ccfg)
+	ccfg := etcdc.Config{Endpoints: []string{cfg.ACUrls[0].String()}}
+	cli, err := etcdc.New(ccfg)
 	if err != nil {
 		t.Fatal(err)
 	}

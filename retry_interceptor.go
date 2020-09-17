@@ -15,7 +15,7 @@
 // Based on github.com/grpc-ecosystem/go-grpc-middleware/retry, but modified to support the more
 // fine grained error checking required by write-at-most-once retry semantics of etcd.
 
-package clientv3
+package etcdc
 
 import (
 	"context"
@@ -112,7 +112,7 @@ func (c *Client) streamClientInterceptor(logger *zap.Logger, optFuncs ...retryOp
 			return streamer(ctx, desc, cc, method, grpcOpts...)
 		}
 		if desc.ClientStreams {
-			return nil, status.Errorf(codes.Unimplemented, "clientv3/retry_interceptor: cannot retry on ClientStreams, set Disable()")
+			return nil, status.Errorf(codes.Unimplemented, "etcdc.retry_interceptor: cannot retry on ClientStreams, set Disable()")
 		}
 		newStreamer, err := streamer(ctx, desc, cc, method, grpcOpts...)
 		if err != nil {
@@ -353,7 +353,7 @@ type options struct {
 	retryAuth   bool
 }
 
-// retryOption is a grpc.CallOption that is local to clientv3's retry interceptor.
+// retryOption is a grpc.CallOption that is local to etcdc.s retry interceptor.
 type retryOption struct {
 	grpc.EmptyCallOption // make sure we implement private after() and before() fields so we don't panic.
 	applyFunc            func(opt *options)

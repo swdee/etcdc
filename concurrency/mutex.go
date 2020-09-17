@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"sync"
 
-	v3 "go.etcd.io/etcd/clientv3"
+	v3 "github.com/swdee/etcdc"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 )
 

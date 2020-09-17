@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package clientv3_test
+package etcdc_test
 
 import (
 	"context"
 	"fmt"
 	"log"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 )
 
 func ExampleLease_grant() {
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := etcdc.New(etcdc.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 	})
@@ -39,14 +39,14 @@ func ExampleLease_grant() {
 	}
 
 	// after 5 seconds, the key 'foo' will be removed
-	_, err = cli.Put(context.TODO(), "foo", "bar", clientv3.WithLease(resp.ID))
+	_, err = cli.Put(context.TODO(), "foo", "bar", etcdc.WithLease(resp.ID))
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
 func ExampleLease_revoke() {
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := etcdc.New(etcdc.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 	})
@@ -60,7 +60,7 @@ func ExampleLease_revoke() {
 		log.Fatal(err)
 	}
 
-	_, err = cli.Put(context.TODO(), "foo", "bar", clientv3.WithLease(resp.ID))
+	_, err = cli.Put(context.TODO(), "foo", "bar", etcdc.WithLease(resp.ID))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func ExampleLease_revoke() {
 }
 
 func ExampleLease_keepAlive() {
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := etcdc.New(etcdc.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 	})
@@ -94,7 +94,7 @@ func ExampleLease_keepAlive() {
 		log.Fatal(err)
 	}
 
-	_, err = cli.Put(context.TODO(), "foo", "bar", clientv3.WithLease(resp.ID))
+	_, err = cli.Put(context.TODO(), "foo", "bar", etcdc.WithLease(resp.ID))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -111,7 +111,7 @@ func ExampleLease_keepAlive() {
 }
 
 func ExampleLease_keepAliveOnce() {
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := etcdc.New(etcdc.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 	})
@@ -125,7 +125,7 @@ func ExampleLease_keepAliveOnce() {
 		log.Fatal(err)
 	}
 
-	_, err = cli.Put(context.TODO(), "foo", "bar", clientv3.WithLease(resp.ID))
+	_, err = cli.Put(context.TODO(), "foo", "bar", etcdc.WithLease(resp.ID))
 	if err != nil {
 		log.Fatal(err)
 	}

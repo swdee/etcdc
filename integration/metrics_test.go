@@ -25,7 +25,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 	"go.etcd.io/etcd/integration"
 	"go.etcd.io/etcd/pkg/testutil"
 	"go.etcd.io/etcd/pkg/transport"
@@ -69,14 +69,14 @@ func TestV3ClientMetrics(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, SkipCreatingClient: true})
 	defer clus.Terminate(t)
 
-	cfg := clientv3.Config{
+	cfg := etcdc.Config{
 		Endpoints: []string{clus.Members[0].GRPCAddr()},
 		DialOptions: []grpc.DialOption{
 			grpc.WithUnaryInterceptor(grpcprom.UnaryClientInterceptor),
 			grpc.WithStreamInterceptor(grpcprom.StreamClientInterceptor),
 		},
 	}
-	cli, cerr := clientv3.New(cfg)
+	cli, cerr := etcdc.New(cfg)
 	if cerr != nil {
 		t.Fatal(cerr)
 	}

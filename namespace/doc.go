@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package namespace is a clientv3 wrapper that translates all keys to begin
+// Package namespace is a etcdc.wrapper that translates all keys to begin
 // with a given prefix.
 //
 // First, create a client:
 //
-//	cli, err := clientv3.New(clientv3.Config{Endpoints: []string{"localhost:2379"}})
+//	cli, err := etcdc.New(etcdc.Config{Endpoints: []string{"localhost:2379"}})
 //	if err != nil {
 //		// handle error!
 //	}

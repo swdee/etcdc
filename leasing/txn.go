@@ -18,7 +18,7 @@ import (
 	"context"
 	"strings"
 
-	v3 "go.etcd.io/etcd/clientv3"
+	v3 "github.com/swdee/etcdc"
 	v3pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 )
 

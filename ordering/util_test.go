@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 	"go.etcd.io/etcd/integration"
 	"go.etcd.io/etcd/pkg/testutil"
 )
@@ -33,8 +33,8 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 		clus.Members[1].GRPCAddr(),
 		clus.Members[2].GRPCAddr(),
 	}
-	cfg := clientv3.Config{Endpoints: []string{clus.Members[0].GRPCAddr()}}
-	cli, err := clientv3.New(cfg)
+	cfg := etcdc.Config{Endpoints: []string{clus.Members[0].GRPCAddr()}}
+	cli, err := etcdc.New(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 
 	cli.SetEndpoints(clus.Members[2].GRPCAddr())
 	time.Sleep(1 * time.Second) // give enough time for operation
-	_, err = OrderingKv.Get(ctx, "foo", clientv3.WithSerializable())
+	_, err = OrderingKv.Get(ctx, "foo", etcdc.WithSerializable())
 	if err != nil {
 		t.Fatalf("failed to resolve order violation %v", err)
 	}
@@ -84,7 +84,7 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 	defer testutil.AfterTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 5, SkipCreatingClient: true})
 	defer clus.Terminate(t)
-	cfg := clientv3.Config{
+	cfg := etcdc.Config{
 		Endpoints: []string{
 			clus.Members[0].GRPCAddr(),
 			clus.Members[1].GRPCAddr(),
@@ -93,7 +93,7 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 			clus.Members[4].GRPCAddr(),
 		},
 	}
-	cli, err := clientv3.New(cfg)
+	cli, err := etcdc.New(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +146,7 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 	cli.SetEndpoints(clus.Members[3].GRPCAddr())
 	time.Sleep(5 * time.Second) // give enough time for operation
 
-	_, err = OrderingKv.Get(ctx, "foo", clientv3.WithSerializable())
+	_, err = OrderingKv.Get(ctx, "foo", etcdc.WithSerializable())
 	if err != ErrNoGreaterRev {
 		t.Fatalf("expected %v, got %v", ErrNoGreaterRev, err)
 	}

@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"go.etcd.io/etcd/integration"
@@ -37,11 +37,11 @@ type watcherTest func(*testing.T, *watchctx)
 
 type watchctx struct {
 	clus          *integration.ClusterV3
-	w             clientv3.Watcher
-	kv            clientv3.KV
+	w             etcdc.Watcher
+	kv            etcdc.KV
 	wclientMember int
 	kvMember      int
-	ch            clientv3.WatchChan
+	ch            etcdc.WatchChan
 }
 
 func runWatchTest(t *testing.T, f watcherTest) {
@@ -99,12 +99,12 @@ func testWatchMultiWatcher(t *testing.T, wctx *watchctx) {
 	}
 	// prefix watcher on "b" (bar and baz)
 	go func() {
-		prefixc := wctx.w.Watch(context.TODO(), "b", clientv3.WithPrefix())
+		prefixc := wctx.w.Watch(context.TODO(), "b", etcdc.WithPrefix())
 		if prefixc == nil {
 			t.Errorf("expected watcher channel, got nil")
 		}
 		readyc <- struct{}{}
-		evs := []*clientv3.Event{}
+		evs := []*etcdc.Event{}
 		for i := 0; i < numKeyUpdates*2; i++ {
 			resp, ok := <-prefixc
 			if !ok {
@@ -168,7 +168,7 @@ func TestWatchRange(t *testing.T) {
 }
 
 func testWatchRange(t *testing.T, wctx *watchctx) {
-	if wctx.ch = wctx.w.Watch(context.TODO(), "a", clientv3.WithRange("c")); wctx.ch == nil {
+	if wctx.ch = wctx.w.Watch(context.TODO(), "a", etcdc.WithRange("c")); wctx.ch == nil {
 		t.Fatalf("expected non-nil channel")
 	}
 	putAndWatch(t, wctx, "a", "a")
@@ -361,7 +361,7 @@ func TestWatchResumeInitRev(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wch := clus.Client(0).Watch(context.Background(), "a", clientv3.WithRev(1), clientv3.WithCreatedNotify())
+	wch := clus.Client(0).Watch(context.Background(), "a", etcdc.WithRev(1), etcdc.WithCreatedNotify())
 	if resp, ok := <-wch; !ok || resp.Header.Revision != 4 {
 		t.Fatalf("got (%v, %v), expected create notification rev=4", resp, ok)
 	}
@@ -407,7 +407,7 @@ func TestWatchResumeCompacted(t *testing.T) {
 
 	// create a waiting watcher at rev 1
 	w := clus.Client(0)
-	wch := w.Watch(context.Background(), "foo", clientv3.WithRev(1))
+	wch := w.Watch(context.Background(), "foo", etcdc.WithRev(1))
 	select {
 	case w := <-wch:
 		t.Errorf("unexpected message from wch %v", w)
@@ -445,7 +445,7 @@ func TestWatchResumeCompacted(t *testing.T) {
 	// sync and get a compaction error.
 	wRev := int64(2)
 	for int(wRev) <= numPuts+1 {
-		var wresp clientv3.WatchResponse
+		var wresp etcdc.WatchResponse
 		var ok bool
 		select {
 		case wresp, ok = <-wch:
@@ -505,7 +505,7 @@ func TestWatchCompactRevision(t *testing.T) {
 	if _, err := kv.Compact(context.TODO(), 4); err != nil {
 		t.Fatal(err)
 	}
-	wch := w.Watch(context.Background(), "foo", clientv3.WithRev(2))
+	wch := w.Watch(context.Background(), "foo", etcdc.WithRev(2))
 
 	// get compacted error message
 	wresp, ok := <-wch
@@ -543,9 +543,9 @@ func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
 
 	wc := clus.RandClient()
 
-	opts := []clientv3.OpOption{clientv3.WithProgressNotify()}
+	opts := []etcdc.OpOption{etcdc.WithProgressNotify()}
 	if watchOnPut {
-		opts = append(opts, clientv3.WithPrefix())
+		opts = append(opts, etcdc.WithPrefix())
 	}
 	rch := wc.Watch(context.Background(), "foo", opts...)
 
@@ -569,7 +569,7 @@ func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
 			t.Fatalf("resp.Header.Revision expected 2, got %d", resp.Header.Revision)
 		}
 		if watchOnPut { // wait for put if watch on the put key
-			ev := []*clientv3.Event{{Type: clientv3.EventTypePut,
+			ev := []*etcdc.Event{{Type: etcdc.EventTypePut,
 				Kv: &mvccpb.KeyValue{Key: []byte("foox"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1}}}
 			if !reflect.DeepEqual(ev, resp.Events) {
 				t.Fatalf("expected %+v, got %+v", ev, resp.Events)
@@ -603,10 +603,10 @@ func TestWatchRequestProgress(t *testing.T) {
 
 			wc := clus.RandClient()
 
-			var watchChans []clientv3.WatchChan
+			var watchChans []etcdc.WatchChan
 
 			for _, prefix := range c.watchers {
-				watchChans = append(watchChans, wc.Watch(context.Background(), prefix, clientv3.WithPrefix()))
+				watchChans = append(watchChans, wc.Watch(context.Background(), prefix, etcdc.WithPrefix()))
 			}
 
 			_, err := wc.Put(context.Background(), "/a", "1")
@@ -660,7 +660,7 @@ func TestWatchEventType(t *testing.T) {
 
 	client := cluster.RandClient()
 	ctx := context.Background()
-	watchChan := client.Watch(ctx, "/", clientv3.WithPrefix())
+	watchChan := client.Watch(ctx, "/", etcdc.WithPrefix())
 
 	if _, err := client.Put(ctx, "/toDelete", "foo"); err != nil {
 		t.Fatalf("Put failed: %v", err)
@@ -675,7 +675,7 @@ func TestWatchEventType(t *testing.T) {
 	if err != nil {
 		t.Fatalf("lease create failed: %v", err)
 	}
-	if _, err := client.Put(ctx, "/toExpire", "foo", clientv3.WithLease(lcr.ID)); err != nil {
+	if _, err := client.Put(ctx, "/toExpire", "foo", etcdc.WithLease(lcr.ID)); err != nil {
 		t.Fatalf("Put failed: %v", err)
 	}
 
@@ -684,21 +684,21 @@ func TestWatchEventType(t *testing.T) {
 		isCreate bool
 		isModify bool
 	}{{
-		et:       clientv3.EventTypePut,
+		et:       etcdc.EventTypePut,
 		isCreate: true,
 	}, {
-		et:       clientv3.EventTypePut,
+		et:       etcdc.EventTypePut,
 		isModify: true,
 	}, {
-		et: clientv3.EventTypeDelete,
+		et: etcdc.EventTypeDelete,
 	}, {
-		et:       clientv3.EventTypePut,
+		et:       etcdc.EventTypePut,
 		isCreate: true,
 	}, {
-		et: clientv3.EventTypeDelete,
+		et: etcdc.EventTypeDelete,
 	}}
 
-	var res []*clientv3.Event
+	var res []*etcdc.Event
 
 	for {
 		select {
@@ -812,8 +812,8 @@ func TestWatchWithRequireLeader(t *testing.T) {
 	// so proxy tests receive a leader loss event on its existing watch before creating a new watch.
 	time.Sleep(time.Duration(5*clus.Members[0].ElectionTicks) * tickDuration)
 
-	chLeader := liveClient.Watch(clientv3.WithRequireLeader(context.TODO()), "foo", clientv3.WithRev(1))
-	chNoLeader := liveClient.Watch(context.TODO(), "foo", clientv3.WithRev(1))
+	chLeader := liveClient.Watch(etcdc.WithRequireLeader(context.TODO()), "foo", etcdc.WithRev(1))
+	chNoLeader := liveClient.Watch(context.TODO(), "foo", etcdc.WithRev(1))
 
 	select {
 	case resp, ok := <-chLeader:
@@ -849,8 +849,8 @@ func TestWatchWithFilter(t *testing.T) {
 	client := cluster.RandClient()
 	ctx := context.Background()
 
-	wcNoPut := client.Watch(ctx, "a", clientv3.WithFilterPut())
-	wcNoDel := client.Watch(ctx, "a", clientv3.WithFilterDelete())
+	wcNoPut := client.Watch(ctx, "a", etcdc.WithFilterPut())
+	wcNoDel := client.Watch(ctx, "a", etcdc.WithFilterDelete())
 
 	if _, err := client.Put(ctx, "a", "abc"); err != nil {
 		t.Fatal(err)
@@ -860,11 +860,11 @@ func TestWatchWithFilter(t *testing.T) {
 	}
 
 	npResp := <-wcNoPut
-	if len(npResp.Events) != 1 || npResp.Events[0].Type != clientv3.EventTypeDelete {
+	if len(npResp.Events) != 1 || npResp.Events[0].Type != etcdc.EventTypeDelete {
 		t.Fatalf("expected delete event, got %+v", npResp.Events)
 	}
 	ndResp := <-wcNoDel
-	if len(ndResp.Events) != 1 || ndResp.Events[0].Type != clientv3.EventTypePut {
+	if len(ndResp.Events) != 1 || ndResp.Events[0].Type != etcdc.EventTypePut {
 		t.Fatalf("expected put event, got %+v", ndResp.Events)
 	}
 
@@ -887,7 +887,7 @@ func TestWatchWithCreatedNotification(t *testing.T) {
 
 	ctx := context.Background()
 
-	createC := client.Watch(ctx, "a", clientv3.WithCreatedNotify())
+	createC := client.Watch(ctx, "a", etcdc.WithCreatedNotify())
 
 	resp := <-createC
 
@@ -905,7 +905,7 @@ func TestWatchWithCreatedNotificationDropConn(t *testing.T) {
 
 	client := cluster.RandClient()
 
-	wch := client.Watch(context.Background(), "a", clientv3.WithCreatedNotify())
+	wch := client.Watch(context.Background(), "a", etcdc.WithCreatedNotify())
 
 	resp := <-wch
 
@@ -938,8 +938,8 @@ func TestWatchCancelOnServer(t *testing.T) {
 	// until require leader watches get create responses to ensure the leadership
 	// watches have started.
 	for {
-		ctx, cancel := context.WithCancel(clientv3.WithRequireLeader(context.TODO()))
-		ww := client.Watch(ctx, "a", clientv3.WithCreatedNotify())
+		ctx, cancel := context.WithCancel(etcdc.WithRequireLeader(context.TODO()))
+		ww := client.Watch(ctx, "a", etcdc.WithCreatedNotify())
 		wresp := <-ww
 		cancel()
 		if wresp.Err() == nil {
@@ -954,7 +954,7 @@ func TestWatchCancelOnServer(t *testing.T) {
 		mctx := metadata.NewOutgoingContext(context.Background(), md)
 		ctx, cancel := context.WithCancel(mctx)
 		cancels[i] = cancel
-		w := client.Watch(ctx, fmt.Sprintf("%d", i), clientv3.WithCreatedNotify())
+		w := client.Watch(ctx, fmt.Sprintf("%d", i), etcdc.WithCreatedNotify())
 		<-w
 	}
 
@@ -1031,7 +1031,7 @@ func testWatchOverlapContextCancel(t *testing.T, f func(*integration.ClusterV3))
 			idx := rand.Intn(len(ctxs))
 			ctx, cancel := context.WithCancel(ctxs[idx])
 			ctxc[idx] <- struct{}{}
-			wch := cli.Watch(ctx, "abc", clientv3.WithRev(1))
+			wch := cli.Watch(ctx, "abc", etcdc.WithRev(1))
 			f(clus)
 			select {
 			case _, ok := <-wch:
@@ -1103,7 +1103,7 @@ func TestWatchStressResumeClose(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	// add more watches than can be resumed before the cancel
-	wchs := make([]clientv3.WatchChan, 2000)
+	wchs := make([]etcdc.WatchChan, 2000)
 	for i := range wchs {
 		wchs[i] = cli.Watch(ctx, "abc")
 	}

@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package clientv3_test
+package etcdc_test
 
 import (
 	"context"
 	"fmt"
 	"log"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 )
 
 func ExampleWatcher_watch() {
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := etcdc.New(etcdc.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 	})
@@ -42,7 +42,7 @@ func ExampleWatcher_watch() {
 }
 
 func ExampleWatcher_watchWithPrefix() {
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := etcdc.New(etcdc.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 	})
@@ -51,7 +51,7 @@ func ExampleWatcher_watchWithPrefix() {
 	}
 	defer cli.Close()
 
-	rch := cli.Watch(context.Background(), "foo", clientv3.WithPrefix())
+	rch := cli.Watch(context.Background(), "foo", etcdc.WithPrefix())
 	for wresp := range rch {
 		for _, ev := range wresp.Events {
 			fmt.Printf("%s %q : %q\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
@@ -61,7 +61,7 @@ func ExampleWatcher_watchWithPrefix() {
 }
 
 func ExampleWatcher_watchWithRange() {
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := etcdc.New(etcdc.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 	})
@@ -71,7 +71,7 @@ func ExampleWatcher_watchWithRange() {
 	defer cli.Close()
 
 	// watches within ['foo1', 'foo4'), in lexicographical order
-	rch := cli.Watch(context.Background(), "foo1", clientv3.WithRange("foo4"))
+	rch := cli.Watch(context.Background(), "foo1", etcdc.WithRange("foo4"))
 	for wresp := range rch {
 		for _, ev := range wresp.Events {
 			fmt.Printf("%s %q : %q\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
@@ -83,7 +83,7 @@ func ExampleWatcher_watchWithRange() {
 }
 
 func ExampleWatcher_watchWithProgressNotify() {
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := etcdc.New(etcdc.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 	})
@@ -91,7 +91,7 @@ func ExampleWatcher_watchWithProgressNotify() {
 		log.Fatal(err)
 	}
 
-	rch := cli.Watch(context.Background(), "foo", clientv3.WithProgressNotify())
+	rch := cli.Watch(context.Background(), "foo", etcdc.WithProgressNotify())
 	wresp := <-rch
 	fmt.Printf("wresp.Header.Revision: %d\n", wresp.Header.Revision)
 	fmt.Println("wresp.IsProgressNotify:", wresp.IsProgressNotify())

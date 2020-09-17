@@ -21,14 +21,14 @@ import (
 	"math/rand"
 	"sync"
 
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/clientv3/concurrency"
+	"github.com/swdee/etcdc"
+	"github.com/swdee/etcdc/concurrency"
 )
 
 // ExampleSTM_apply shows how to use STM with a transactional
 // transfer between balances.
 func ExampleSTM_apply() {
-	cli, err := clientv3.New(clientv3.Config{Endpoints: endpoints})
+	cli, err := etcdc.New(etcdc.Config{Endpoints: endpoints})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func ExampleSTM_apply() {
 
 	// confirm account sum matches sum from beginning.
 	sum := 0
-	accts, err := cli.Get(context.TODO(), "accts/", clientv3.WithPrefix())
+	accts, err := cli.Get(context.TODO(), "accts/", etcdc.WithPrefix())
 	if err != nil {
 		log.Fatal(err)
 	}

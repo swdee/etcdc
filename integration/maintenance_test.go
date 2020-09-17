@@ -28,7 +28,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"go.etcd.io/etcd/integration"
 	"go.etcd.io/etcd/lease"
@@ -210,7 +210,7 @@ func TestMaintenanceStatus(t *testing.T) {
 		eps[i] = clus.Members[i].GRPCAddr()
 	}
 
-	cli, err := clientv3.New(clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
+	cli, err := etcdc.New(etcdc.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
 	if err != nil {
 		t.Fatal(err)
 	}

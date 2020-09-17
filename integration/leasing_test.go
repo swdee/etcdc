@@ -23,9 +23,9 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/clientv3/concurrency"
-	"go.etcd.io/etcd/clientv3/leasing"
+	"github.com/swdee/etcdc"
+	"github.com/swdee/etcdc/concurrency"
+	"github.com/swdee/etcdc/leasing"
 	"go.etcd.io/etcd/integration"
 	"go.etcd.io/etcd/pkg/testutil"
 )
@@ -105,7 +105,7 @@ func TestLeasingInterval(t *testing.T) {
 		}
 	}
 
-	resp, err := lkv.Get(context.TODO(), "abc/", clientv3.WithPrefix())
+	resp, err := lkv.Get(context.TODO(), "abc/", etcdc.WithPrefix())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func TestLeasingInterval(t *testing.T) {
 	}
 
 	// get when prefix is also a cached key
-	if resp, err = lkv.Get(context.TODO(), "abc/a", clientv3.WithPrefix()); err != nil {
+	if resp, err = lkv.Get(context.TODO(), "abc/a", etcdc.WithPrefix()); err != nil {
 		t.Fatal(err)
 	}
 	if len(resp.Kvs) != 2 {
@@ -204,7 +204,7 @@ func TestLeasingGetNoLeaseTTL(t *testing.T) {
 	lresp, err := clus.Client(0).Grant(context.TODO(), 60)
 	testutil.AssertNil(t, err)
 
-	_, err = clus.Client(0).Put(context.TODO(), "k", "v", clientv3.WithLease(lresp.ID))
+	_, err = clus.Client(0).Put(context.TODO(), "k", "v", etcdc.WithLease(lresp.ID))
 	testutil.AssertNil(t, err)
 
 	gresp, err := lkv.Get(context.TODO(), "k")
@@ -240,7 +240,7 @@ func TestLeasingGetSerializable(t *testing.T) {
 	clus.Members[1].Stop(t)
 
 	// don't necessarily try to acquire leasing key ownership for new key
-	resp, err := lkv.Get(context.TODO(), "uncached", clientv3.WithSerializable())
+	resp, err := lkv.Get(context.TODO(), "uncached", etcdc.WithSerializable())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,7 +251,7 @@ func TestLeasingGetSerializable(t *testing.T) {
 	clus.Members[0].Stop(t)
 
 	// leasing key ownership should have "cached" locally served
-	cachedResp, err := lkv.Get(context.TODO(), "cached", clientv3.WithSerializable())
+	cachedResp, err := lkv.Get(context.TODO(), "cached", etcdc.WithSerializable())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -277,7 +277,7 @@ func TestLeasingPrevKey(t *testing.T) {
 	if _, err = lkv.Get(context.TODO(), "k"); err != nil {
 		t.Fatal(err)
 	}
-	resp, err := lkv.Put(context.TODO(), "k", "def", clientv3.WithPrevKV())
+	resp, err := lkv.Put(context.TODO(), "k", "def", etcdc.WithPrevKV())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -305,7 +305,7 @@ func TestLeasingRevGet(t *testing.T) {
 	}
 
 	// check historic revision
-	getResp, gerr := lkv.Get(context.TODO(), "k", clientv3.WithRev(putResp.Header.Revision))
+	getResp, gerr := lkv.Get(context.TODO(), "k", etcdc.WithRev(putResp.Header.Revision))
 	if gerr != nil {
 		t.Fatal(gerr)
 	}
@@ -336,19 +336,19 @@ func TestLeasingGetWithOpts(t *testing.T) {
 		t.Fatal(err)
 	}
 	// in cache
-	if _, err = lkv.Get(context.TODO(), "k", clientv3.WithKeysOnly()); err != nil {
+	if _, err = lkv.Get(context.TODO(), "k", etcdc.WithKeysOnly()); err != nil {
 		t.Fatal(err)
 	}
 
 	clus.Members[0].Stop(t)
 
-	opts := []clientv3.OpOption{
-		clientv3.WithKeysOnly(),
-		clientv3.WithLimit(1),
-		clientv3.WithMinCreateRev(1),
-		clientv3.WithMinModRev(1),
-		clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend),
-		clientv3.WithSerializable(),
+	opts := []etcdc.OpOption{
+		etcdc.WithKeysOnly(),
+		etcdc.WithLimit(1),
+		etcdc.WithMinCreateRev(1),
+		etcdc.WithMinModRev(1),
+		etcdc.WithSort(etcdc.SortByKey, etcdc.SortAscend),
+		etcdc.WithSerializable(),
 	}
 	for _, opt := range opts {
 		if _, err := lkv.Get(context.TODO(), "k", opt); err != nil {
@@ -356,7 +356,7 @@ func TestLeasingGetWithOpts(t *testing.T) {
 		}
 	}
 
-	getOpts := []clientv3.OpOption{}
+	getOpts := []etcdc.OpOption{}
 	for i := 0; i < len(opts); i++ {
 		getOpts = append(getOpts, opts[rand.Intn(len(opts))])
 	}
@@ -384,7 +384,7 @@ func TestLeasingConcurrentPut(t *testing.T) {
 
 	// concurrently put through leasing client
 	numPuts := 16
-	putc := make(chan *clientv3.PutResponse, numPuts)
+	putc := make(chan *etcdc.PutResponse, numPuts)
 	for i := 0; i < numPuts; i++ {
 		go func() {
 			resp, perr := lkv.Put(context.TODO(), "k", "abc")
@@ -605,7 +605,7 @@ func TestLeasingTxnOwnerGetRange(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tresp, terr := lkv.Txn(context.TODO()).Then(clientv3.OpGet("k-", clientv3.WithPrefix())).Commit()
+	tresp, terr := lkv.Txn(context.TODO()).Then(etcdc.OpGet("k-", etcdc.WithPrefix())).Commit()
 	if terr != nil {
 		t.Fatal(terr)
 	}
@@ -624,8 +624,8 @@ func TestLeasingTxnOwnerGet(t *testing.T) {
 	defer closeLKV()
 
 	keyCount := rand.Intn(10) + 1
-	var ops []clientv3.Op
-	presps := make([]*clientv3.PutResponse, keyCount)
+	var ops []etcdc.Op
+	presps := make([]*etcdc.PutResponse, keyCount)
 	for i := range presps {
 		k := fmt.Sprintf("k-%d", i)
 		presp, err := clus.Client(0).Put(context.TODO(), k, k+k)
@@ -637,22 +637,22 @@ func TestLeasingTxnOwnerGet(t *testing.T) {
 		if _, err = lkv.Get(context.TODO(), k); err != nil {
 			t.Fatal(err)
 		}
-		ops = append(ops, clientv3.OpGet(k))
+		ops = append(ops, etcdc.OpGet(k))
 	}
 	ops = ops[:rand.Intn(len(ops))]
 
 	// served through cache
 	clus.Members[0].Stop(t)
 
-	var thenOps, elseOps []clientv3.Op
+	var thenOps, elseOps []etcdc.Op
 	cmps, useThen := randCmps("k-", presps)
 
 	if useThen {
 
 		thenOps = ops
-		elseOps = []clientv3.Op{clientv3.OpPut("k", "1")}
+		elseOps = []etcdc.Op{etcdc.OpPut("k", "1")}
 	} else {
-		thenOps = []clientv3.Op{clientv3.OpPut("k", "1")}
+		thenOps = []etcdc.Op{etcdc.OpPut("k", "1")}
 		elseOps = ops
 	}
 
@@ -704,7 +704,7 @@ func TestLeasingTxnOwnerDeleteRange(t *testing.T) {
 	}
 
 	// cache in lkv
-	resp, err := lkv.Get(context.TODO(), "k-", clientv3.WithPrefix())
+	resp, err := lkv.Get(context.TODO(), "k-", etcdc.WithPrefix())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -712,11 +712,11 @@ func TestLeasingTxnOwnerDeleteRange(t *testing.T) {
 		t.Fatalf("expected %d keys, got %d", keyCount, len(resp.Kvs))
 	}
 
-	if _, terr := lkv.Txn(context.TODO()).Then(clientv3.OpDelete("k-", clientv3.WithPrefix())).Commit(); terr != nil {
+	if _, terr := lkv.Txn(context.TODO()).Then(etcdc.OpDelete("k-", etcdc.WithPrefix())).Commit(); terr != nil {
 		t.Fatal(terr)
 	}
 
-	resp, err = lkv.Get(context.TODO(), "k-", clientv3.WithPrefix())
+	resp, err = lkv.Get(context.TODO(), "k-", etcdc.WithPrefix())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -743,7 +743,7 @@ func TestLeasingTxnOwnerDelete(t *testing.T) {
 		t.Fatal(gerr)
 	}
 
-	if _, terr := lkv.Txn(context.TODO()).Then(clientv3.OpDelete("k")).Commit(); terr != nil {
+	if _, terr := lkv.Txn(context.TODO()).Then(etcdc.OpDelete("k")).Commit(); terr != nil {
 		t.Fatal(terr)
 	}
 
@@ -776,68 +776,68 @@ func TestLeasingTxnOwnerIf(t *testing.T) {
 	clus.Members[0].Stop(t)
 
 	tests := []struct {
-		cmps       []clientv3.Cmp
+		cmps       []etcdc.Cmp
 		wSucceeded bool
 		wResponses int
 	}{
 		// success
 		{
-			cmps:       []clientv3.Cmp{clientv3.Compare(clientv3.Value("k"), "=", "abc")},
+			cmps:       []etcdc.Cmp{etcdc.Compare(etcdc.Value("k"), "=", "abc")},
 			wSucceeded: true,
 			wResponses: 1,
 		},
 		{
-			cmps:       []clientv3.Cmp{clientv3.Compare(clientv3.CreateRevision("k"), "=", 2)},
+			cmps:       []etcdc.Cmp{etcdc.Compare(etcdc.CreateRevision("k"), "=", 2)},
 			wSucceeded: true,
 			wResponses: 1,
 		},
 		{
-			cmps:       []clientv3.Cmp{clientv3.Compare(clientv3.ModRevision("k"), "=", 2)},
+			cmps:       []etcdc.Cmp{etcdc.Compare(etcdc.ModRevision("k"), "=", 2)},
 			wSucceeded: true,
 			wResponses: 1,
 		},
 		{
-			cmps:       []clientv3.Cmp{clientv3.Compare(clientv3.Version("k"), "=", 1)},
+			cmps:       []etcdc.Cmp{etcdc.Compare(etcdc.Version("k"), "=", 1)},
 			wSucceeded: true,
 			wResponses: 1,
 		},
 		// failure
 		{
-			cmps: []clientv3.Cmp{clientv3.Compare(clientv3.Value("k"), ">", "abc")},
+			cmps: []etcdc.Cmp{etcdc.Compare(etcdc.Value("k"), ">", "abc")},
 		},
 		{
-			cmps: []clientv3.Cmp{clientv3.Compare(clientv3.CreateRevision("k"), ">", 2)},
+			cmps: []etcdc.Cmp{etcdc.Compare(etcdc.CreateRevision("k"), ">", 2)},
 		},
 		{
-			cmps:       []clientv3.Cmp{clientv3.Compare(clientv3.ModRevision("k"), "=", 2)},
+			cmps:       []etcdc.Cmp{etcdc.Compare(etcdc.ModRevision("k"), "=", 2)},
 			wSucceeded: true,
 			wResponses: 1,
 		},
 		{
-			cmps: []clientv3.Cmp{clientv3.Compare(clientv3.Version("k"), ">", 1)},
+			cmps: []etcdc.Cmp{etcdc.Compare(etcdc.Version("k"), ">", 1)},
 		},
 		{
-			cmps: []clientv3.Cmp{clientv3.Compare(clientv3.Value("k"), "<", "abc")},
+			cmps: []etcdc.Cmp{etcdc.Compare(etcdc.Value("k"), "<", "abc")},
 		},
 		{
-			cmps: []clientv3.Cmp{clientv3.Compare(clientv3.CreateRevision("k"), "<", 2)},
+			cmps: []etcdc.Cmp{etcdc.Compare(etcdc.CreateRevision("k"), "<", 2)},
 		},
 		{
-			cmps: []clientv3.Cmp{clientv3.Compare(clientv3.ModRevision("k"), "<", 2)},
+			cmps: []etcdc.Cmp{etcdc.Compare(etcdc.ModRevision("k"), "<", 2)},
 		},
 		{
-			cmps: []clientv3.Cmp{clientv3.Compare(clientv3.Version("k"), "<", 1)},
+			cmps: []etcdc.Cmp{etcdc.Compare(etcdc.Version("k"), "<", 1)},
 		},
 		{
-			cmps: []clientv3.Cmp{
-				clientv3.Compare(clientv3.Version("k"), "=", 1),
-				clientv3.Compare(clientv3.Version("k"), "<", 1),
+			cmps: []etcdc.Cmp{
+				etcdc.Compare(etcdc.Version("k"), "=", 1),
+				etcdc.Compare(etcdc.Version("k"), "<", 1),
 			},
 		},
 	}
 
 	for i, tt := range tests {
-		tresp, terr := lkv.Txn(context.TODO()).If(tt.cmps...).Then(clientv3.OpGet("k")).Commit()
+		tresp, terr := lkv.Txn(context.TODO()).If(tt.cmps...).Then(etcdc.OpGet("k")).Commit()
 		if terr != nil {
 			t.Fatal(terr)
 		}
@@ -879,7 +879,7 @@ func TestLeasingTxnCancel(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 		cancel()
 	}()
-	if _, err := lkv2.Txn(ctx).Then(clientv3.OpPut("k", "v")).Commit(); err != context.Canceled {
+	if _, err := lkv2.Txn(ctx).Then(etcdc.OpPut("k", "v")).Commit(); err != context.Canceled {
 		t.Fatalf("expected %v, got %v", context.Canceled, err)
 	}
 }
@@ -911,12 +911,12 @@ func TestLeasingTxnNonOwnerPut(t *testing.T) {
 		t.Fatal(err)
 	}
 	// invalidate via lkv2 txn
-	opArray := make([]clientv3.Op, 0)
-	opArray = append(opArray, clientv3.OpPut("k2", "456"))
+	opArray := make([]etcdc.Op, 0)
+	opArray = append(opArray, etcdc.OpPut("k2", "456"))
 	tresp, terr := lkv2.Txn(context.TODO()).Then(
-		clientv3.OpTxn(nil, opArray, nil),
-		clientv3.OpPut("k", "def"),
-		clientv3.OpPut("k3", "999"), // + a key not in any cache
+		etcdc.OpTxn(nil, opArray, nil),
+		etcdc.OpPut("k", "def"),
+		etcdc.OpPut("k3", "999"), // + a key not in any cache
 	).Commit()
 	if terr != nil {
 		t.Fatal(terr)
@@ -943,11 +943,11 @@ func TestLeasingTxnNonOwnerPut(t *testing.T) {
 	w := clus.Client(0).Watch(
 		clus.Client(0).Ctx(),
 		"k",
-		clientv3.WithRev(tresp.Header.Revision),
-		clientv3.WithPrefix())
+		etcdc.WithRev(tresp.Header.Revision),
+		etcdc.WithPrefix())
 	wresp := <-w
 	c := 0
-	evs := []clientv3.Event{}
+	evs := []etcdc.Event{}
 	for _, ev := range wresp.Events {
 		evs = append(evs, *ev)
 		if ev.Kv.ModRevision == tresp.Header.Revision {
@@ -975,7 +975,7 @@ func TestLeasingTxnRandIfThenOrElse(t *testing.T) {
 	defer closeLKV2()
 
 	keyCount := 16
-	dat := make([]*clientv3.PutResponse, keyCount)
+	dat := make([]*etcdc.PutResponse, keyCount)
 	for i := 0; i < keyCount; i++ {
 		k, v := fmt.Sprintf("k-%d", i), fmt.Sprintf("%d", i)
 		dat[i], err1 = clus.Client(0).Put(context.TODO(), k, v)
@@ -987,7 +987,7 @@ func TestLeasingTxnRandIfThenOrElse(t *testing.T) {
 	// nondeterministically populate leasing caches
 	var wg sync.WaitGroup
 	getc := make(chan struct{}, keyCount)
-	getRandom := func(kv clientv3.KV) {
+	getRandom := func(kv etcdc.KV) {
 		defer wg.Done()
 		for i := 0; i < keyCount/2; i++ {
 			k := fmt.Sprintf("k-%d", rand.Intn(keyCount))
@@ -1005,7 +1005,7 @@ func TestLeasingTxnRandIfThenOrElse(t *testing.T) {
 	// random list of comparisons, all true
 	cmps, useThen := randCmps("k-", dat)
 	// random list of puts/gets; unique keys
-	ops := []clientv3.Op{}
+	ops := []etcdc.Op{}
 	usedIdx := make(map[int]struct{})
 	for i := 0; i < keyCount; i++ {
 		idx := rand.Intn(keyCount)
@@ -1016,9 +1016,9 @@ func TestLeasingTxnRandIfThenOrElse(t *testing.T) {
 		k := fmt.Sprintf("k-%d", idx)
 		switch rand.Intn(2) {
 		case 0:
-			ops = append(ops, clientv3.OpGet(k))
+			ops = append(ops, etcdc.OpGet(k))
 		case 1:
-			ops = append(ops, clientv3.OpPut(k, "a"))
+			ops = append(ops, etcdc.OpPut(k, "a"))
 			// TODO: add delete
 		}
 	}
@@ -1031,7 +1031,7 @@ func TestLeasingTxnRandIfThenOrElse(t *testing.T) {
 	}
 
 	// randomly choose between then and else blocks
-	var thenOps, elseOps []clientv3.Op
+	var thenOps, elseOps []etcdc.Op
 	if useThen {
 		thenOps = ops
 	} else {
@@ -1048,7 +1048,7 @@ func TestLeasingTxnRandIfThenOrElse(t *testing.T) {
 		t.Fatalf("expected succeeded=%v, got tresp=%+v", useThen, tresp)
 	}
 	// get should match what was put
-	checkPuts := func(s string, kv clientv3.KV) {
+	checkPuts := func(s string, kv etcdc.KV) {
 		for _, op := range ops {
 			if !op.IsPut() {
 				continue
@@ -1127,14 +1127,14 @@ func TestLeasingNonOwnerPutError(t *testing.T) {
 }
 
 func TestLeasingOwnerDeletePrefix(t *testing.T) {
-	testLeasingOwnerDelete(t, clientv3.OpDelete("key/", clientv3.WithPrefix()))
+	testLeasingOwnerDelete(t, etcdc.OpDelete("key/", etcdc.WithPrefix()))
 }
 
 func TestLeasingOwnerDeleteFrom(t *testing.T) {
-	testLeasingOwnerDelete(t, clientv3.OpDelete("kd", clientv3.WithFromKey()))
+	testLeasingOwnerDelete(t, etcdc.OpDelete("kd", etcdc.WithFromKey()))
 }
 
-func testLeasingOwnerDelete(t *testing.T, del clientv3.Op) {
+func testLeasingOwnerDelete(t *testing.T, del etcdc.Op) {
 	defer testutil.AfterTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -1175,8 +1175,8 @@ func testLeasingOwnerDelete(t *testing.T, del clientv3.Op) {
 	w := clus.Client(0).Watch(
 		clus.Client(0).Ctx(),
 		"key/",
-		clientv3.WithRev(delResp.Header.Revision),
-		clientv3.WithPrefix())
+		etcdc.WithRev(delResp.Header.Revision),
+		etcdc.WithPrefix())
 
 	if wresp := <-w; len(wresp.Events) != 8 {
 		t.Fatalf("expected %d delete events,got %d", 8, len(wresp.Events))
@@ -1205,13 +1205,13 @@ func TestLeasingDeleteRangeBounds(t *testing.T) {
 		}
 	}
 
-	if _, err = delkv.Delete(context.TODO(), "k", clientv3.WithPrefix()); err != nil {
+	if _, err = delkv.Delete(context.TODO(), "k", etcdc.WithPrefix()); err != nil {
 		t.Fatal(err)
 	}
 
 	// leases still on server?
 	for _, k := range []string{"j", "m"} {
-		resp, geterr := clus.Client(0).Get(context.TODO(), "0/"+k, clientv3.WithPrefix())
+		resp, geterr := clus.Client(0).Get(context.TODO(), "0/"+k, etcdc.WithPrefix())
 		if geterr != nil {
 			t.Fatal(geterr)
 		}
@@ -1232,16 +1232,16 @@ func TestLeasingDeleteRangeBounds(t *testing.T) {
 }
 
 func TestLeasingDeleteRangeContendTxn(t *testing.T) {
-	then := []clientv3.Op{clientv3.OpDelete("key/", clientv3.WithPrefix())}
-	testLeasingDeleteRangeContend(t, clientv3.OpTxn(nil, then, nil))
+	then := []etcdc.Op{etcdc.OpDelete("key/", etcdc.WithPrefix())}
+	testLeasingDeleteRangeContend(t, etcdc.OpTxn(nil, then, nil))
 }
 
 func TestLeaseDeleteRangeContendDel(t *testing.T) {
-	op := clientv3.OpDelete("key/", clientv3.WithPrefix())
+	op := etcdc.OpDelete("key/", etcdc.WithPrefix())
 	testLeasingDeleteRangeContend(t, op)
 }
 
-func testLeasingDeleteRangeContend(t *testing.T, op clientv3.Op) {
+func testLeasingDeleteRangeContend(t *testing.T, op etcdc.Op) {
 	defer testutil.AfterTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -1304,7 +1304,7 @@ func TestLeasingPutGetDeleteConcurrent(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	lkvs := make([]clientv3.KV, 16)
+	lkvs := make([]etcdc.KV, 16)
 	for i := range lkvs {
 		lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
 		testutil.AssertNil(t, err)
@@ -1312,7 +1312,7 @@ func TestLeasingPutGetDeleteConcurrent(t *testing.T) {
 		lkvs[i] = lkv
 	}
 
-	getdel := func(kv clientv3.KV) {
+	getdel := func(kv etcdc.KV) {
 		if _, err := kv.Put(context.TODO(), "k", "abc"); err != nil {
 			t.Fatal(err)
 		}
@@ -1509,22 +1509,22 @@ func TestLeasingReconnectOwnerConsistency(t *testing.T) {
 			_, err = lkv.Delete(context.TODO(), "k")
 		case 2:
 			txn := lkv.Txn(context.TODO()).Then(
-				clientv3.OpGet("k"),
-				clientv3.OpDelete("k"),
+				etcdc.OpGet("k"),
+				etcdc.OpDelete("k"),
 			)
 			_, err = txn.Commit()
 		case 3:
 			txn := lkv.Txn(context.TODO()).Then(
-				clientv3.OpGet("k"),
-				clientv3.OpPut("k", v),
+				etcdc.OpGet("k"),
+				etcdc.OpPut("k", v),
 			)
 			_, err = txn.Commit()
 		case 4:
-			_, err = lkv.Do(context.TODO(), clientv3.OpPut("k", v))
+			_, err = lkv.Do(context.TODO(), etcdc.OpPut("k", v))
 		case 5:
-			_, err = lkv.Do(context.TODO(), clientv3.OpDelete("k"))
+			_, err = lkv.Do(context.TODO(), etcdc.OpDelete("k"))
 		case 6:
-			_, err = lkv.Delete(context.TODO(), "k", clientv3.WithPrefix())
+			_, err = lkv.Delete(context.TODO(), "k", etcdc.WithPrefix())
 		}
 		<-donec
 		if err != nil {
@@ -1555,10 +1555,10 @@ func TestLeasingTxnAtomicCache(t *testing.T) {
 	testutil.AssertNil(t, err)
 	defer closeLKV()
 
-	puts, gets := make([]clientv3.Op, 16), make([]clientv3.Op, 16)
+	puts, gets := make([]etcdc.Op, 16), make([]etcdc.Op, 16)
 	for i := range puts {
 		k := fmt.Sprintf("k-%d", i)
-		puts[i], gets[i] = clientv3.OpPut(k, k), clientv3.OpGet(k)
+		puts[i], gets[i] = etcdc.OpPut(k, k), etcdc.OpGet(k)
 	}
 	if _, err = clus.Client(0).Txn(context.TODO()).Then(puts...).Commit(); err != nil {
 		t.Fatal(err)
@@ -1648,8 +1648,8 @@ func TestLeasingReconnectTxn(t *testing.T) {
 	}()
 
 	_, lerr := lkv.Txn(context.TODO()).
-		If(clientv3.Compare(clientv3.Version("k"), "=", 0)).
-		Then(clientv3.OpGet("k")).
+		If(etcdc.Compare(etcdc.Version("k"), "=", 0)).
+		Then(etcdc.OpGet("k")).
 		Commit()
 	<-donec
 	if lerr != nil {
@@ -1735,7 +1735,7 @@ func TestLeasingTxnRangeCmp(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cmp := clientv3.Compare(clientv3.Version("k").WithPrefix(), "=", 1)
+	cmp := etcdc.Compare(etcdc.Version("k").WithPrefix(), "=", 1)
 	tresp, terr := lkv.Txn(context.TODO()).If(cmp).Commit()
 	if terr != nil {
 		t.Fatal(err)
@@ -1754,12 +1754,12 @@ func TestLeasingDo(t *testing.T) {
 	testutil.AssertNil(t, err)
 	defer closeLKV()
 
-	ops := []clientv3.Op{
-		clientv3.OpTxn(nil, nil, nil),
-		clientv3.OpGet("a"),
-		clientv3.OpPut("a/abc", "v"),
-		clientv3.OpDelete("a", clientv3.WithPrefix()),
-		clientv3.OpTxn(nil, nil, nil),
+	ops := []etcdc.Op{
+		etcdc.OpTxn(nil, nil, nil),
+		etcdc.OpGet("a"),
+		etcdc.OpPut("a/abc", "v"),
+		etcdc.OpDelete("a", etcdc.WithPrefix()),
+		etcdc.OpTxn(nil, nil, nil),
 	}
 	for i, op := range ops {
 		resp, resperr := lkv.Do(context.TODO(), op)
@@ -1778,7 +1778,7 @@ func TestLeasingDo(t *testing.T) {
 		}
 	}
 
-	gresp, err := clus.Client(0).Get(context.TODO(), "a", clientv3.WithPrefix())
+	gresp, err := clus.Client(0).Get(context.TODO(), "a", etcdc.WithPrefix())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1831,43 +1831,43 @@ func TestLeasingTxnOwnerPutBranch(t *testing.T) {
 	}
 }
 
-func makePutTreeOp(pfx string, v *int, depth int) clientv3.Op {
+func makePutTreeOp(pfx string, v *int, depth int) etcdc.Op {
 	key := fmt.Sprintf("%s/%d", pfx, *v)
 	*v = *v + 1
 	if depth == 0 {
-		return clientv3.OpPut(key, "leaf")
+		return etcdc.OpPut(key, "leaf")
 	}
 
 	t, e := makePutTreeOp(pfx, v, depth-1), makePutTreeOp(pfx, v, depth-1)
-	tPut, ePut := clientv3.OpPut(key, "then"), clientv3.OpPut(key, "else")
+	tPut, ePut := etcdc.OpPut(key, "then"), etcdc.OpPut(key, "else")
 
-	cmps := make([]clientv3.Cmp, 1)
+	cmps := make([]etcdc.Cmp, 1)
 	if rand.Intn(2) == 0 {
 		// follow then path
-		cmps[0] = clientv3.Compare(clientv3.Version("nokey"), "=", 0)
+		cmps[0] = etcdc.Compare(etcdc.Version("nokey"), "=", 0)
 	} else {
 		// follow else path
-		cmps[0] = clientv3.Compare(clientv3.Version("nokey"), ">", 0)
+		cmps[0] = etcdc.Compare(etcdc.Version("nokey"), ">", 0)
 	}
 
-	return clientv3.OpTxn(cmps, []clientv3.Op{t, tPut}, []clientv3.Op{e, ePut})
+	return etcdc.OpTxn(cmps, []etcdc.Op{t, tPut}, []etcdc.Op{e, ePut})
 }
 
-func randCmps(pfx string, dat []*clientv3.PutResponse) (cmps []clientv3.Cmp, then bool) {
+func randCmps(pfx string, dat []*etcdc.PutResponse) (cmps []etcdc.Cmp, then bool) {
 	for i := 0; i < len(dat); i++ {
 		idx := rand.Intn(len(dat))
 		k := fmt.Sprintf("%s%d", pfx, idx)
 		rev := dat[idx].Header.Revision
-		var cmp clientv3.Cmp
+		var cmp etcdc.Cmp
 		switch rand.Intn(4) {
 		case 0:
-			cmp = clientv3.Compare(clientv3.CreateRevision(k), ">", rev-1)
+			cmp = etcdc.Compare(etcdc.CreateRevision(k), ">", rev-1)
 		case 1:
-			cmp = clientv3.Compare(clientv3.Version(k), "=", 1)
+			cmp = etcdc.Compare(etcdc.Version(k), "=", 1)
 		case 2:
-			cmp = clientv3.Compare(clientv3.CreateRevision(k), "=", rev)
+			cmp = etcdc.Compare(etcdc.CreateRevision(k), "=", rev)
 		case 3:
-			cmp = clientv3.Compare(clientv3.CreateRevision(k), "!=", rev+1)
+			cmp = etcdc.Compare(etcdc.CreateRevision(k), "!=", rev+1)
 
 		}
 		cmps = append(cmps, cmp)
@@ -1877,7 +1877,7 @@ func randCmps(pfx string, dat []*clientv3.PutResponse) (cmps []clientv3.Cmp, the
 		return cmps, true
 	}
 	i := rand.Intn(len(dat))
-	cmps = append(cmps, clientv3.Compare(clientv3.Version(fmt.Sprintf("k-%d", i)), "=", 0))
+	cmps = append(cmps, etcdc.Compare(etcdc.Version(fmt.Sprintf("k-%d", i)), "=", 0))
 	return cmps, false
 }
 
@@ -1921,37 +1921,37 @@ func TestLeasingSessionExpire(t *testing.T) {
 }
 
 func TestLeasingSessionExpireCancel(t *testing.T) {
-	tests := []func(context.Context, clientv3.KV) error{
-		func(ctx context.Context, kv clientv3.KV) error {
+	tests := []func(context.Context, etcdc.KV) error{
+		func(ctx context.Context, kv etcdc.KV) error {
 			_, err := kv.Get(ctx, "abc")
 			return err
 		},
-		func(ctx context.Context, kv clientv3.KV) error {
+		func(ctx context.Context, kv etcdc.KV) error {
 			_, err := kv.Delete(ctx, "abc")
 			return err
 		},
-		func(ctx context.Context, kv clientv3.KV) error {
+		func(ctx context.Context, kv etcdc.KV) error {
 			_, err := kv.Put(ctx, "abc", "v")
 			return err
 		},
-		func(ctx context.Context, kv clientv3.KV) error {
-			_, err := kv.Txn(ctx).Then(clientv3.OpGet("abc")).Commit()
+		func(ctx context.Context, kv etcdc.KV) error {
+			_, err := kv.Txn(ctx).Then(etcdc.OpGet("abc")).Commit()
 			return err
 		},
-		func(ctx context.Context, kv clientv3.KV) error {
-			_, err := kv.Do(ctx, clientv3.OpPut("abc", "v"))
+		func(ctx context.Context, kv etcdc.KV) error {
+			_, err := kv.Do(ctx, etcdc.OpPut("abc", "v"))
 			return err
 		},
-		func(ctx context.Context, kv clientv3.KV) error {
-			_, err := kv.Do(ctx, clientv3.OpDelete("abc"))
+		func(ctx context.Context, kv etcdc.KV) error {
+			_, err := kv.Do(ctx, etcdc.OpDelete("abc"))
 			return err
 		},
-		func(ctx context.Context, kv clientv3.KV) error {
-			_, err := kv.Do(ctx, clientv3.OpGet("abc"))
+		func(ctx context.Context, kv etcdc.KV) error {
+			_, err := kv.Do(ctx, etcdc.OpGet("abc"))
 			return err
 		},
-		func(ctx context.Context, kv clientv3.KV) error {
-			op := clientv3.OpTxn(nil, []clientv3.Op{clientv3.OpGet("abc")}, nil)
+		func(ctx context.Context, kv etcdc.KV) error {
+			op := etcdc.OpTxn(nil, []etcdc.Op{etcdc.OpGet("abc")}, nil)
 			_, err := kv.Do(ctx, op)
 			return err
 		},
@@ -1997,10 +1997,10 @@ func TestLeasingSessionExpireCancel(t *testing.T) {
 	}
 }
 
-func waitForLeasingExpire(kv clientv3.KV, lkey string) error {
+func waitForLeasingExpire(kv etcdc.KV, lkey string) error {
 	for {
 		time.Sleep(1 * time.Second)
-		resp, err := kv.Get(context.TODO(), lkey, clientv3.WithPrefix())
+		resp, err := kv.Get(context.TODO(), lkey, etcdc.WithPrefix())
 		if err != nil {
 			return err
 		}
@@ -2011,7 +2011,7 @@ func waitForLeasingExpire(kv clientv3.KV, lkey string) error {
 	}
 }
 
-func waitForExpireAck(t *testing.T, kv clientv3.KV) {
+func waitForExpireAck(t *testing.T, kv etcdc.KV) {
 	// wait for leasing client to acknowledge lost lease
 	for i := 0; i < 10; i++ {
 		ctx, cancel := context.WithTimeout(context.TODO(), time.Second)

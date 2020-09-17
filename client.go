@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package clientv3
+package etcdc
 
 import (
 	"context"
@@ -26,10 +26,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"go.etcd.io/etcd/clientv3/balancer"
-	"go.etcd.io/etcd/clientv3/balancer/picker"
-	"go.etcd.io/etcd/clientv3/balancer/resolver/endpoint"
-	"go.etcd.io/etcd/clientv3/credentials"
+	"github.com/swdee/etcdc/balancer"
+	"github.com/swdee/etcdc/balancer/picker"
+	"github.com/swdee/etcdc/balancer/resolver/endpoint"
+	"github.com/swdee/etcdc/credentials"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"go.etcd.io/etcd/pkg/logutil"
 	"go.uber.org/zap"
@@ -242,7 +242,7 @@ func (c *Client) dialSetupOpts(creds grpccredentials.TransportCredentials, dopts
 	opts = append(opts, grpc.WithContextDialer(dialer))
 
 	// Interceptor retry and backoff.
-	// TODO: Replace all of clientv3/retry.go with interceptor based retry, or with
+	// TODO: Replace all of etcdc.retry.go with interceptor based retry, or with
 	// https://github.com/grpc/proposal/blob/master/A6-client-retries.md#retry-policy
 	// once it is available.
 	rrBackoff := withBackoff(c.roundRobinQuorumBackoff(defaultBackoffWaitBetween, defaultBackoffJitterFraction))

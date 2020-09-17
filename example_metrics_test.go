@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package clientv3_test
+package etcdc_test
 
 import (
 	"context"
@@ -23,7 +23,7 @@ import (
 	"net/http"
 	"strings"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 
 	grpcprom "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -31,7 +31,7 @@ import (
 )
 
 func ExampleClient_metrics() {
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := etcdc.New(etcdc.Config{
 		Endpoints: endpoints,
 		DialOptions: []grpc.DialOption{
 			grpc.WithUnaryInterceptor(grpcprom.UnaryClientInterceptor),

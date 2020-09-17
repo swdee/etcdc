@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/integration"
 	"go.etcd.io/etcd/pkg/testutil"
@@ -35,14 +35,14 @@ func TestDetectKvOrderViolation(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	cfg := clientv3.Config{
+	cfg := etcdc.Config{
 		Endpoints: []string{
 			clus.Members[0].GRPCAddr(),
 			clus.Members[1].GRPCAddr(),
 			clus.Members[2].GRPCAddr(),
 		},
 	}
-	cli, err := clientv3.New(cfg)
+	cli, err := etcdc.New(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func TestDetectKvOrderViolation(t *testing.T) {
 	// set up kvOrdering to expect "foo" revisions greater than that of
 	// the third member.
 	orderingKv := NewKV(cli.KV,
-		func(op clientv3.Op, resp clientv3.OpResponse, prevRev int64) error {
+		func(op etcdc.Op, resp etcdc.OpResponse, prevRev int64) error {
 			return errOrderViolation
 		})
 	_, err = orderingKv.Get(ctx, "foo")
@@ -84,7 +84,7 @@ func TestDetectKvOrderViolation(t *testing.T) {
 	cli.SetEndpoints(clus.Members[2].GRPCAddr())
 	time.Sleep(2 * time.Second) // FIXME: Figure out how pause SetEndpoints sufficiently that this is not needed
 
-	_, err = orderingKv.Get(ctx, "foo", clientv3.WithSerializable())
+	_, err = orderingKv.Get(ctx, "foo", etcdc.WithSerializable())
 	if err != errOrderViolation {
 		t.Fatalf("expected %v, got %v", errOrderViolation, err)
 	}
@@ -97,14 +97,14 @@ func TestDetectTxnOrderViolation(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	cfg := clientv3.Config{
+	cfg := etcdc.Config{
 		Endpoints: []string{
 			clus.Members[0].GRPCAddr(),
 			clus.Members[1].GRPCAddr(),
 			clus.Members[2].GRPCAddr(),
 		},
 	}
-	cli, err := clientv3.New(cfg)
+	cli, err := etcdc.New(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,14 +129,14 @@ func TestDetectTxnOrderViolation(t *testing.T) {
 	// set up kvOrdering to expect "foo" revisions greater than that of
 	// the third member.
 	orderingKv := NewKV(cli.KV,
-		func(op clientv3.Op, resp clientv3.OpResponse, prevRev int64) error {
+		func(op etcdc.Op, resp etcdc.OpResponse, prevRev int64) error {
 			return errOrderViolation
 		})
 	orderingTxn := orderingKv.Txn(ctx)
 	_, err = orderingTxn.If(
-		clientv3.Compare(clientv3.Value("b"), ">", "a"),
+		etcdc.Compare(etcdc.Value("b"), ">", "a"),
 	).Then(
-		clientv3.OpGet("foo"),
+		etcdc.OpGet("foo"),
 	).Commit()
 	if err != nil {
 		t.Fatal(err)
@@ -149,15 +149,15 @@ func TestDetectTxnOrderViolation(t *testing.T) {
 	// force OrderingKv to query the third member
 	cli.SetEndpoints(clus.Members[2].GRPCAddr())
 	time.Sleep(2 * time.Second) // FIXME: Figure out how pause SetEndpoints sufficiently that this is not needed
-	_, err = orderingKv.Get(ctx, "foo", clientv3.WithSerializable())
+	_, err = orderingKv.Get(ctx, "foo", etcdc.WithSerializable())
 	if err != errOrderViolation {
 		t.Fatalf("expected %v, got %v", errOrderViolation, err)
 	}
 	orderingTxn = orderingKv.Txn(ctx)
 	_, err = orderingTxn.If(
-		clientv3.Compare(clientv3.Value("b"), ">", "a"),
+		etcdc.Compare(etcdc.Value("b"), ">", "a"),
 	).Then(
-		clientv3.OpGet("foo", clientv3.WithSerializable()),
+		etcdc.OpGet("foo", etcdc.WithSerializable()),
 	).Commit()
 	if err != errOrderViolation {
 		t.Fatalf("expected %v, got %v", errOrderViolation, err)
@@ -165,21 +165,21 @@ func TestDetectTxnOrderViolation(t *testing.T) {
 }
 
 type mockKV struct {
-	clientv3.KV
-	response clientv3.OpResponse
+	etcdc.KV
+	response etcdc.OpResponse
 }
 
-func (kv *mockKV) Do(ctx gContext.Context, op clientv3.Op) (clientv3.OpResponse, error) {
+func (kv *mockKV) Do(ctx gContext.Context, op etcdc.Op) (etcdc.OpResponse, error) {
 	return kv.response, nil
 }
 
 var rangeTests = []struct {
 	prevRev  int64
-	response *clientv3.GetResponse
+	response *etcdc.GetResponse
 }{
 	{
 		5,
-		&clientv3.GetResponse{
+		&etcdc.GetResponse{
 			Header: &pb.ResponseHeader{
 				Revision: 5,
 			},
@@ -187,7 +187,7 @@ var rangeTests = []struct {
 	},
 	{
 		5,
-		&clientv3.GetResponse{
+		&etcdc.GetResponse{
 			Header: &pb.ResponseHeader{
 				Revision: 4,
 			},
@@ -195,7 +195,7 @@ var rangeTests = []struct {
 	},
 	{
 		5,
-		&clientv3.GetResponse{
+		&etcdc.GetResponse{
 			Header: &pb.ResponseHeader{
 				Revision: 6,
 			},
@@ -205,11 +205,11 @@ var rangeTests = []struct {
 
 func TestKvOrdering(t *testing.T) {
 	for i, tt := range rangeTests {
-		mKV := &mockKV{clientv3.NewKVFromKVClient(nil, nil), tt.response.OpResponse()}
+		mKV := &mockKV{etcdc.NewKVFromKVClient(nil, nil), tt.response.OpResponse()}
 		kv := &kvOrdering{
 			mKV,
-			func(r *clientv3.GetResponse) OrderViolationFunc {
-				return func(op clientv3.Op, resp clientv3.OpResponse, prevRev int64) error {
+			func(r *etcdc.GetResponse) OrderViolationFunc {
+				return func(op etcdc.Op, resp etcdc.OpResponse, prevRev int64) error {
 					r.Header.Revision++
 					return nil
 				}
@@ -229,11 +229,11 @@ func TestKvOrdering(t *testing.T) {
 
 var txnTests = []struct {
 	prevRev  int64
-	response *clientv3.TxnResponse
+	response *etcdc.TxnResponse
 }{
 	{
 		5,
-		&clientv3.TxnResponse{
+		&etcdc.TxnResponse{
 			Header: &pb.ResponseHeader{
 				Revision: 5,
 			},
@@ -241,7 +241,7 @@ var txnTests = []struct {
 	},
 	{
 		5,
-		&clientv3.TxnResponse{
+		&etcdc.TxnResponse{
 			Header: &pb.ResponseHeader{
 				Revision: 8,
 			},
@@ -249,7 +249,7 @@ var txnTests = []struct {
 	},
 	{
 		5,
-		&clientv3.TxnResponse{
+		&etcdc.TxnResponse{
 			Header: &pb.ResponseHeader{
 				Revision: 4,
 			},
@@ -259,11 +259,11 @@ var txnTests = []struct {
 
 func TestTxnOrdering(t *testing.T) {
 	for i, tt := range txnTests {
-		mKV := &mockKV{clientv3.NewKVFromKVClient(nil, nil), tt.response.OpResponse()}
+		mKV := &mockKV{etcdc.NewKVFromKVClient(nil, nil), tt.response.OpResponse()}
 		kv := &kvOrdering{
 			mKV,
-			func(r *clientv3.TxnResponse) OrderViolationFunc {
-				return func(op clientv3.Op, resp clientv3.OpResponse, prevRev int64) error {
+			func(r *etcdc.TxnResponse) OrderViolationFunc {
+				return func(op etcdc.Op, resp etcdc.OpResponse, prevRev int64) error {
 					r.Header.Revision++
 					return nil
 				}
@@ -276,9 +276,9 @@ func TestTxnOrdering(t *testing.T) {
 			kv,
 			context.Background(),
 			sync.Mutex{},
-			[]clientv3.Cmp{},
-			[]clientv3.Op{},
-			[]clientv3.Op{},
+			[]etcdc.Cmp{},
+			[]etcdc.Op{},
+			[]etcdc.Op{},
 		}
 		res, err := txn.Commit()
 		if err != nil {

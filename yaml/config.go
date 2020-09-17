@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package yaml handles yaml-formatted clientv3 configuration data.
+// Package yaml handles yaml-formatted etcdc.configuration data.
 package yaml
 
 import (
@@ -22,12 +22,12 @@ import (
 
 	"sigs.k8s.io/yaml"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 	"go.etcd.io/etcd/pkg/tlsutil"
 )
 
 type yamlConfig struct {
-	clientv3.Config
+	etcdc.Config
 
 	InsecureTransport     bool   `json:"insecure-transport"`
 	InsecureSkipTLSVerify bool   `json:"insecure-skip-tls-verify"`
@@ -40,8 +40,8 @@ type yamlConfig struct {
 	CAfile string `json:"ca-file"`
 }
 
-// NewConfig creates a new clientv3.Config from a yaml file.
-func NewConfig(fpath string) (*clientv3.Config, error) {
+// NewConfig creates a new etcdc.Config from a yaml file.
+func NewConfig(fpath string) (*etcdc.Config, error) {
 	b, err := ioutil.ReadFile(fpath)
 	if err != nil {
 		return nil, err

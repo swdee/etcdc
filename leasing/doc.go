@@ -17,7 +17,7 @@
 // leasing layer can either directly wrap the etcd client or it can be exposed
 // through the etcd grpc proxy server, granting multiple clients write access.
 //
-// First, create a leasing KV from a clientv3.Client 'cli':
+// First, create a leasing KV from a etcdc.Client 'cli':
 //
 //     lkv, err := leasing.NewKV(cli, "leasing-prefix")
 //     if err != nil {

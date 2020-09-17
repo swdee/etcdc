@@ -22,8 +22,8 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/clientv3/concurrency"
+	"github.com/swdee/etcdc"
+	"github.com/swdee/etcdc/concurrency"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"go.etcd.io/etcd/integration"
 	"go.etcd.io/etcd/pkg/testutil"
@@ -37,7 +37,7 @@ func TestLeaseNotFoundError(t *testing.T) {
 
 	kv := clus.RandClient()
 
-	_, err := kv.Put(context.TODO(), "foo", "bar", clientv3.WithLease(clientv3.LeaseID(500)))
+	_, err := kv.Put(context.TODO(), "foo", "bar", etcdc.WithLease(etcdc.LeaseID(500)))
 	if err != rpctypes.ErrLeaseNotFound {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrLeaseNotFound, err)
 	}
@@ -53,7 +53,7 @@ func TestLeaseGrant(t *testing.T) {
 
 	kv := clus.RandClient()
 
-	_, merr := lapi.Grant(context.Background(), clientv3.MaxLeaseTTL+1)
+	_, merr := lapi.Grant(context.Background(), etcdc.MaxLeaseTTL+1)
 	if merr != rpctypes.ErrLeaseTTLTooLarge {
 		t.Fatalf("err = %v, want %v", merr, rpctypes.ErrLeaseTTLTooLarge)
 	}
@@ -63,7 +63,7 @@ func TestLeaseGrant(t *testing.T) {
 		t.Errorf("failed to create lease %v", err)
 	}
 
-	_, err = kv.Put(context.TODO(), "foo", "bar", clientv3.WithLease(resp.ID))
+	_, err = kv.Put(context.TODO(), "foo", "bar", etcdc.WithLease(resp.ID))
 	if err != nil {
 		t.Fatalf("failed to create key with lease %v", err)
 	}
@@ -89,7 +89,7 @@ func TestLeaseRevoke(t *testing.T) {
 		t.Errorf("failed to revoke lease %v", err)
 	}
 
-	_, err = kv.Put(context.TODO(), "foo", "bar", clientv3.WithLease(resp.ID))
+	_, err = kv.Put(context.TODO(), "foo", "bar", etcdc.WithLease(resp.ID))
 	if err != rpctypes.ErrLeaseNotFound {
 		t.Fatalf("err = %v, want %v", err, rpctypes.ErrLeaseNotFound)
 	}
@@ -113,7 +113,7 @@ func TestLeaseKeepAliveOnce(t *testing.T) {
 		t.Errorf("failed to keepalive lease %v", err)
 	}
 
-	_, err = lapi.KeepAliveOnce(context.Background(), clientv3.LeaseID(0))
+	_, err = lapi.KeepAliveOnce(context.Background(), etcdc.LeaseID(0))
 	if err != rpctypes.ErrLeaseNotFound {
 		t.Errorf("expected %v, got %v", rpctypes.ErrLeaseNotFound, err)
 	}
@@ -237,8 +237,8 @@ func TestLeaseKeepAliveHandleFailure(t *testing.T) {
 }
 
 type leaseCh struct {
-	lid clientv3.LeaseID
-	ch  <-chan *clientv3.LeaseKeepAliveResponse
+	lid etcdc.LeaseID
+	ch  <-chan *etcdc.LeaseKeepAliveResponse
 }
 
 // TestLeaseKeepAliveNotFound ensures a revoked lease won't halt other leases.
@@ -297,7 +297,7 @@ func TestLeaseGrantErrConnClosed(t *testing.T) {
 	go func() {
 		defer close(donec)
 		_, err := cli.Grant(context.TODO(), 5)
-		if !clientv3.IsConnCanceled(err) {
+		if !etcdc.IsConnCanceled(err) {
 			// context.Canceled if grpc-go balancer calls 'Get' with an inflight client.Close.
 			t.Errorf("expected %v, or server unavailable, got %v", context.Canceled, err)
 		}
@@ -328,11 +328,11 @@ func TestLeaseKeepAliveFullResponseQueue(t *testing.T) {
 	}
 	id := lresp.ID
 
-	old := clientv3.LeaseResponseChSize
+	old := etcdc.LeaseResponseChSize
 	defer func() {
-		clientv3.LeaseResponseChSize = old
+		etcdc.LeaseResponseChSize = old
 	}()
-	clientv3.LeaseResponseChSize = 0
+	etcdc.LeaseResponseChSize = 0
 
 	// never fetch from response queue, and let it become full
 	_, err = lapi.KeepAlive(context.Background(), id)
@@ -368,7 +368,7 @@ func TestLeaseGrantNewAfterClose(t *testing.T) {
 	donec := make(chan struct{})
 	go func() {
 		_, err := cli.Grant(context.TODO(), 5)
-		if !clientv3.IsConnCanceled(err) {
+		if !etcdc.IsConnCanceled(err) {
 			t.Errorf("expected %v or server unavailable, got %v", context.Canceled, err)
 		}
 		close(donec)
@@ -401,7 +401,7 @@ func TestLeaseRevokeNewAfterClose(t *testing.T) {
 	donec := make(chan struct{})
 	go func() {
 		_, err := cli.Revoke(context.TODO(), leaseID)
-		if !clientv3.IsConnCanceled(err) {
+		if !etcdc.IsConnCanceled(err) {
 			t.Fatalf("expected %v or server unavailable, got %v", context.Canceled, err)
 		}
 		close(donec)
@@ -546,7 +546,7 @@ func TestLeaseTimeToLive(t *testing.T) {
 	kv := clus.RandClient()
 	keys := []string{"foo1", "foo2"}
 	for i := range keys {
-		if _, err = kv.Put(context.TODO(), keys[i], "bar", clientv3.WithLease(resp.ID)); err != nil {
+		if _, err = kv.Put(context.TODO(), keys[i], "bar", etcdc.WithLease(resp.ID)); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -556,7 +556,7 @@ func TestLeaseTimeToLive(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	lresp, lerr := lapi.TimeToLive(context.Background(), resp.ID, clientv3.WithAttachedKeys())
+	lresp, lerr := lapi.TimeToLive(context.Background(), resp.ID, etcdc.WithAttachedKeys())
 	if lerr != nil {
 		t.Fatal(lerr)
 	}
@@ -630,7 +630,7 @@ func TestLeaseLeases(t *testing.T) {
 
 	cli := clus.RandClient()
 
-	ids := []clientv3.LeaseID{}
+	ids := []etcdc.LeaseID{}
 	for i := 0; i < 5; i++ {
 		resp, err := cli.Grant(context.Background(), 10)
 		if err != nil {
@@ -720,8 +720,8 @@ func TestLeaseKeepAliveLoopExit(t *testing.T) {
 	cli.Close()
 
 	_, err = cli.KeepAlive(ctx, resp.ID)
-	if _, ok := err.(clientv3.ErrKeepAliveHalted); !ok {
-		t.Fatalf("expected %T, got %v(%T)", clientv3.ErrKeepAliveHalted{}, err, err)
+	if _, ok := err.(etcdc.ErrKeepAliveHalted); !ok {
+		t.Fatalf("expected %T, got %v(%T)", etcdc.ErrKeepAliveHalted{}, err, err)
 	}
 }
 
@@ -796,7 +796,7 @@ func TestLeaseWithRequireLeader(t *testing.T) {
 		t.Fatal(err2)
 	}
 	// kaReqLeader close if the leader is lost
-	kaReqLeader, kerr1 := c.KeepAlive(clientv3.WithRequireLeader(context.TODO()), lid1.ID)
+	kaReqLeader, kerr1 := c.KeepAlive(etcdc.WithRequireLeader(context.TODO()), lid1.ID)
 	if kerr1 != nil {
 		t.Fatal(kerr1)
 	}

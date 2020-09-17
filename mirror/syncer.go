@@ -18,7 +18,7 @@ package mirror
 import (
 	"context"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 )
 
 const (
@@ -29,25 +29,25 @@ const (
 type Syncer interface {
 	// SyncBase syncs the base state of the key-value state.
 	// The key-value state are sent through the returned chan.
-	SyncBase(ctx context.Context) (<-chan clientv3.GetResponse, chan error)
+	SyncBase(ctx context.Context) (<-chan etcdc.GetResponse, chan error)
 	// SyncUpdates syncs the updates of the key-value state.
 	// The update events are sent through the returned chan.
-	SyncUpdates(ctx context.Context) clientv3.WatchChan
+	SyncUpdates(ctx context.Context) etcdc.WatchChan
 }
 
 // NewSyncer creates a Syncer.
-func NewSyncer(c *clientv3.Client, prefix string, rev int64) Syncer {
+func NewSyncer(c *etcdc.Client, prefix string, rev int64) Syncer {
 	return &syncer{c: c, prefix: prefix, rev: rev}
 }
 
 type syncer struct {
-	c      *clientv3.Client
+	c      *etcdc.Client
 	rev    int64
 	prefix string
 }
 
-func (s *syncer) SyncBase(ctx context.Context) (<-chan clientv3.GetResponse, chan error) {
-	respchan := make(chan clientv3.GetResponse, 1024)
+func (s *syncer) SyncBase(ctx context.Context) (<-chan etcdc.GetResponse, chan error) {
+	respchan := make(chan etcdc.GetResponse, 1024)
 	errchan := make(chan error, 1)
 
 	// if rev is not specified, we will choose the most recent revision.
@@ -68,18 +68,18 @@ func (s *syncer) SyncBase(ctx context.Context) (<-chan clientv3.GetResponse, cha
 
 		var key string
 
-		opts := []clientv3.OpOption{clientv3.WithLimit(batchLimit), clientv3.WithRev(s.rev)}
+		opts := []etcdc.OpOption{etcdc.WithLimit(batchLimit), etcdc.WithRev(s.rev)}
 
 		if len(s.prefix) == 0 {
 			// If len(s.prefix) == 0, we will sync the entire key-value space.
 			// We then range from the smallest key (0x00) to the end.
-			opts = append(opts, clientv3.WithFromKey())
+			opts = append(opts, etcdc.WithFromKey())
 			key = "\x00"
 		} else {
 			// If len(s.prefix) != 0, we will sync key-value space with given prefix.
 			// We then range from the prefix to the next prefix if exists. Or we will
 			// range from the prefix to the end if the next prefix does not exists.
-			opts = append(opts, clientv3.WithRange(clientv3.GetPrefixRangeEnd(s.prefix)))
+			opts = append(opts, etcdc.WithRange(etcdc.GetPrefixRangeEnd(s.prefix)))
 			key = s.prefix
 		}
 
@@ -103,9 +103,9 @@ func (s *syncer) SyncBase(ctx context.Context) (<-chan clientv3.GetResponse, cha
 	return respchan, errchan
 }
 
-func (s *syncer) SyncUpdates(ctx context.Context) clientv3.WatchChan {
+func (s *syncer) SyncUpdates(ctx context.Context) etcdc.WatchChan {
 	if s.rev == 0 {
 		panic("unexpected revision = 0. Calling SyncUpdates before SyncBase finishes?")
 	}
-	return s.c.Watch(ctx, s.prefix, clientv3.WithPrefix(), clientv3.WithRev(s.rev+1))
+	return s.c.Watch(ctx, s.prefix, etcdc.WithPrefix(), etcdc.WithRev(s.rev+1))
 }

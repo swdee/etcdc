@@ -18,11 +18,11 @@ import (
 	"context"
 	"sync"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 )
 
 type watcherPrefix struct {
-	clientv3.Watcher
+	etcdc.Watcher
 	pfx string
 
 	wg       sync.WaitGroup
@@ -33,23 +33,23 @@ type watcherPrefix struct {
 // NewWatcher wraps a Watcher instance so that all Watch requests
 // are prefixed with a given string and all Watch responses have
 // the prefix removed.
-func NewWatcher(w clientv3.Watcher, prefix string) clientv3.Watcher {
+func NewWatcher(w etcdc.Watcher, prefix string) etcdc.Watcher {
 	return &watcherPrefix{Watcher: w, pfx: prefix, stopc: make(chan struct{})}
 }
 
-func (w *watcherPrefix) Watch(ctx context.Context, key string, opts ...clientv3.OpOption) clientv3.WatchChan {
+func (w *watcherPrefix) Watch(ctx context.Context, key string, opts ...etcdc.OpOption) etcdc.WatchChan {
 	// since OpOption is opaque, determine range for prefixing through an OpGet
-	op := clientv3.OpGet(key, opts...)
+	op := etcdc.OpGet(key, opts...)
 	end := op.RangeBytes()
 	pfxBegin, pfxEnd := prefixInterval(w.pfx, []byte(key), end)
 	if pfxEnd != nil {
-		opts = append(opts, clientv3.WithRange(string(pfxEnd)))
+		opts = append(opts, etcdc.WithRange(string(pfxEnd)))
 	}
 
 	wch := w.Watcher.Watch(ctx, string(pfxBegin), opts...)
 
 	// translate watch events from prefixed to unprefixed
-	pfxWch := make(chan clientv3.WatchResponse)
+	pfxWch := make(chan etcdc.WatchResponse)
 	w.wg.Add(1)
 	go func() {
 		defer func() {

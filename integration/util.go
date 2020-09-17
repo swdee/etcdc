@@ -19,12 +19,12 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 )
 
 // mustWaitPinReady waits up to 3-second until connection is up (pin endpoint).
 // Fatal on time-out.
-func mustWaitPinReady(t *testing.T, cli *clientv3.Client) {
+func mustWaitPinReady(t *testing.T, cli *etcdc.Client) {
 	// TODO: decrease timeout after balancer rewrite!!!
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	_, err := cli.Get(ctx, "foo")

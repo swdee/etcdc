@@ -30,7 +30,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	bolt "go.etcd.io/bbolt"
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 	"go.etcd.io/etcd/etcdserver"
 	"go.etcd.io/etcd/etcdserver/api/membership"
 	"go.etcd.io/etcd/etcdserver/api/snap"
@@ -58,7 +58,7 @@ type Manager interface {
 	// in client configuration. Snapshot API must be requested to a
 	// selected node, and saved snapshot is the point-in-time state of
 	// the selected node.
-	Save(ctx context.Context, cfg clientv3.Config, dbPath string) error
+	Save(ctx context.Context, cfg etcdc.Config, dbPath string) error
 
 	// Status returns the snapshot file information.
 	Status(dbPath string) (Status, error)
@@ -98,11 +98,11 @@ func hasChecksum(n int64) bool {
 }
 
 // Save fetches snapshot from remote etcd server and saves data to target path.
-func (s *v3Manager) Save(ctx context.Context, cfg clientv3.Config, dbPath string) error {
+func (s *v3Manager) Save(ctx context.Context, cfg etcdc.Config, dbPath string) error {
 	if len(cfg.Endpoints) != 1 {
 		return fmt.Errorf("snapshot must be requested to one selected node, not multiple %v", cfg.Endpoints)
 	}
-	cli, err := clientv3.New(cfg)
+	cli, err := etcdc.New(cfg)
 	if err != nil {
 		return err
 	}

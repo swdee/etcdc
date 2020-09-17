@@ -18,21 +18,21 @@ import (
 	"bytes"
 	"context"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 )
 
 type leasePrefix struct {
-	clientv3.Lease
+	etcdc.Lease
 	pfx []byte
 }
 
 // NewLease wraps a Lease interface to filter for only keys with a prefix
 // and remove that prefix when fetching attached keys through TimeToLive.
-func NewLease(l clientv3.Lease, prefix string) clientv3.Lease {
+func NewLease(l etcdc.Lease, prefix string) etcdc.Lease {
 	return &leasePrefix{l, []byte(prefix)}
 }
 
-func (l *leasePrefix) TimeToLive(ctx context.Context, id clientv3.LeaseID, opts ...clientv3.LeaseOption) (*clientv3.LeaseTimeToLiveResponse, error) {
+func (l *leasePrefix) TimeToLive(ctx context.Context, id etcdc.LeaseID, opts ...etcdc.LeaseOption) (*etcdc.LeaseTimeToLiveResponse, error) {
 	resp, err := l.Lease.TimeToLive(ctx, id, opts...)
 	if err != nil {
 		return nil, err

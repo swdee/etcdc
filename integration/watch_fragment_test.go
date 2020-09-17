@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 	"go.etcd.io/etcd/integration"
 	"go.etcd.io/etcd/pkg/testutil"
 )
@@ -90,9 +90,9 @@ func testWatchFragment(t *testing.T, fragment, exceedRecvLimit bool) {
 		}
 	}
 
-	opts := []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithRev(1)}
+	opts := []etcdc.OpOption{etcdc.WithPrefix(), etcdc.WithRev(1)}
 	if fragment {
-		opts = append(opts, clientv3.WithFragment())
+		opts = append(opts, etcdc.WithFragment())
 	}
 	wch := cli.Watch(context.TODO(), "foo", opts...)
 

@@ -19,8 +19,8 @@ import (
 	"reflect"
 	"testing"
 
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/clientv3/namespace"
+	"github.com/swdee/etcdc"
+	"github.com/swdee/etcdc/namespace"
 	"go.etcd.io/etcd/integration"
 	"go.etcd.io/etcd/mvcc/mvccpb"
 	"go.etcd.io/etcd/pkg/testutil"
@@ -69,13 +69,13 @@ func TestNamespaceWatch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	nsWch := nsWatcher.Watch(context.TODO(), "abc", clientv3.WithRev(1))
+	nsWch := nsWatcher.Watch(context.TODO(), "abc", etcdc.WithRev(1))
 	wkv := &mvccpb.KeyValue{Key: []byte("abc"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1}
 	if wr := <-nsWch; len(wr.Events) != 1 || !reflect.DeepEqual(wr.Events[0].Kv, wkv) {
 		t.Errorf("expected namespaced event %+v, got %+v", wkv, wr.Events[0].Kv)
 	}
 
-	wch := c.Watch(context.TODO(), "foo/abc", clientv3.WithRev(1))
+	wch := c.Watch(context.TODO(), "foo/abc", etcdc.WithRev(1))
 	wkv = &mvccpb.KeyValue{Key: []byte("foo/abc"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1}
 	if wr := <-wch; len(wr.Events) != 1 || !reflect.DeepEqual(wr.Events[0].Kv, wkv) {
 		t.Errorf("expected unnamespaced event %+v, got %+v", wkv, wr)

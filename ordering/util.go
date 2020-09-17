@@ -19,17 +19,17 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 )
 
-type OrderViolationFunc func(op clientv3.Op, resp clientv3.OpResponse, prevRev int64) error
+type OrderViolationFunc func(op etcdc.Op, resp etcdc.OpResponse, prevRev int64) error
 
 var ErrNoGreaterRev = errors.New("etcdclient: no cluster members have a revision higher than the previously received revision")
 
-func NewOrderViolationSwitchEndpointClosure(c clientv3.Client) OrderViolationFunc {
+func NewOrderViolationSwitchEndpointClosure(c etcdc.Client) OrderViolationFunc {
 	var mu sync.Mutex
 	violationCount := 0
-	return func(op clientv3.Op, resp clientv3.OpResponse, prevRev int64) error {
+	return func(op etcdc.Op, resp etcdc.OpResponse, prevRev int64) error {
 		if violationCount > len(c.Endpoints()) {
 			return ErrNoGreaterRev
 		}

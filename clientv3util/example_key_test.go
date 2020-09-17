@@ -12,33 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package clientv3util_test
+package etcdc.til_test
 
 import (
 	"context"
 	"log"
 
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/clientv3/clientv3util"
+	"github.com/swdee/etcdc"
+	"github.com/swdee/etcdc/etcdc.til"
 )
 
 func ExampleKeyMissing() {
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := etcdc.New(etcdc.Config{
 		Endpoints: []string{"127.0.0.1:2379"},
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer cli.Close()
-	kvc := clientv3.NewKV(cli)
+	kvc := etcdc.NewKV(cli)
 
 	// perform a put only if key is missing
 	// It is useful to do the check atomically to avoid overwriting
 	// the existing key which would generate potentially unwanted events,
 	// unless of course you wanted to do an overwrite no matter what.
 	_, err = kvc.Txn(context.Background()).
-		If(clientv3util.KeyMissing("purpleidea")).
-		Then(clientv3.OpPut("purpleidea", "hello world")).
+		If(etcdc.til.KeyMissing("purpleidea")).
+		Then(etcdc.OpPut("purpleidea", "hello world")).
 		Commit()
 	if err != nil {
 		log.Fatal(err)
@@ -46,19 +46,19 @@ func ExampleKeyMissing() {
 }
 
 func ExampleKeyExists() {
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := etcdc.New(etcdc.Config{
 		Endpoints: []string{"127.0.0.1:2379"},
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer cli.Close()
-	kvc := clientv3.NewKV(cli)
+	kvc := etcdc.NewKV(cli)
 
 	// perform a delete only if key already exists
 	_, err = kvc.Txn(context.Background()).
-		If(clientv3util.KeyExists("purpleidea")).
-		Then(clientv3.OpDelete("purpleidea")).
+		If(etcdc.til.KeyExists("purpleidea")).
+		Then(etcdc.OpDelete("purpleidea")).
 		Commit()
 	if err != nil {
 		log.Fatal(err)

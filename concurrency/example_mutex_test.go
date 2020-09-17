@@ -19,12 +19,12 @@ import (
 	"fmt"
 	"log"
 
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/clientv3/concurrency"
+	"github.com/swdee/etcdc"
+	"github.com/swdee/etcdc/concurrency"
 )
 
 func ExampleMutex_Lock() {
-	cli, err := clientv3.New(clientv3.Config{Endpoints: endpoints})
+	cli, err := etcdc.New(etcdc.Config{Endpoints: endpoints})
 	if err != nil {
 		log.Fatal(err)
 	}

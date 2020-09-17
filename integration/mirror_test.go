@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3/mirror"
+	"github.com/swdee/etcdc/mirror"
 	"go.etcd.io/etcd/integration"
 	"go.etcd.io/etcd/mvcc/mvccpb"
 	"go.etcd.io/etcd/pkg/testutil"

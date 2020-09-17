@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 	"go.etcd.io/etcd/embed"
 	"go.etcd.io/etcd/etcdserver"
 	"go.etcd.io/etcd/pkg/testutil"
@@ -47,7 +47,7 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 	// wait for health interval + leader election
 	time.Sleep(etcdserver.HealthInterval + 2*time.Second)
 
-	cli, err := clientv3.New(clientv3.Config{Endpoints: []string{cURLs[0].String()}})
+	cli, err := etcdc.New(etcdc.Config{Endpoints: []string{cURLs[0].String()}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 		t.Fatalf("failed to start the newly added etcd member")
 	}
 
-	cli2, err := clientv3.New(clientv3.Config{Endpoints: []string{newCURLs[0].String()}})
+	cli2, err := etcdc.New(etcdc.Config{Endpoints: []string{newCURLs[0].String()}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,9 +110,9 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 	}
 
 	// make sure restored cluster has kept all data on recovery
-	var gresp *clientv3.GetResponse
+	var gresp *etcdc.GetResponse
 	ctx, cancel = context.WithTimeout(context.Background(), testutil.RequestTimeout)
-	gresp, err = cli2.Get(ctx, "foo", clientv3.WithPrefix())
+	gresp, err = cli2.Get(ctx, "foo", etcdc.WithPrefix())
 	cancel()
 	if err != nil {
 		t.Fatal(err)

@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/integration"
@@ -36,7 +36,7 @@ var errExpected = errors.New("expected error")
 // first Put request fails, and following retry succeeds with client balancer
 // switching to others.
 func TestBalancerUnderNetworkPartitionPut(t *testing.T) {
-	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
+	testBalancerUnderNetworkPartition(t, func(cli *etcdc.Client, ctx context.Context) error {
 		_, err := cli.Put(ctx, "a", "b")
 		if isClientTimeout(err) || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
@@ -46,7 +46,7 @@ func TestBalancerUnderNetworkPartitionPut(t *testing.T) {
 }
 
 func TestBalancerUnderNetworkPartitionDelete(t *testing.T) {
-	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
+	testBalancerUnderNetworkPartition(t, func(cli *etcdc.Client, ctx context.Context) error {
 		_, err := cli.Delete(ctx, "a")
 		if isClientTimeout(err) || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
@@ -56,11 +56,11 @@ func TestBalancerUnderNetworkPartitionDelete(t *testing.T) {
 }
 
 func TestBalancerUnderNetworkPartitionTxn(t *testing.T) {
-	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
+	testBalancerUnderNetworkPartition(t, func(cli *etcdc.Client, ctx context.Context) error {
 		_, err := cli.Txn(ctx).
-			If(clientv3.Compare(clientv3.Version("foo"), "=", 0)).
-			Then(clientv3.OpPut("foo", "bar")).
-			Else(clientv3.OpPut("foo", "baz")).Commit()
+			If(etcdc.Compare(etcdc.Version("foo"), "=", 0)).
+			Then(etcdc.OpPut("foo", "bar")).
+			Else(etcdc.OpPut("foo", "baz")).Commit()
 		if isClientTimeout(err) || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
 		}
@@ -72,7 +72,7 @@ func TestBalancerUnderNetworkPartitionTxn(t *testing.T) {
 // when one member becomes isolated, first quorum Get request succeeds
 // by switching endpoints within the timeout (long enough to cover endpoint switch).
 func TestBalancerUnderNetworkPartitionLinearizableGetWithLongTimeout(t *testing.T) {
-	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
+	testBalancerUnderNetworkPartition(t, func(cli *etcdc.Client, ctx context.Context) error {
 		_, err := cli.Get(ctx, "a")
 		if err == rpctypes.ErrTimeout {
 			return errExpected
@@ -85,7 +85,7 @@ func TestBalancerUnderNetworkPartitionLinearizableGetWithLongTimeout(t *testing.
 // when one member becomes isolated, first quorum Get request fails,
 // and following retry succeeds with client balancer switching to others.
 func TestBalancerUnderNetworkPartitionLinearizableGetWithShortTimeout(t *testing.T) {
-	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
+	testBalancerUnderNetworkPartition(t, func(cli *etcdc.Client, ctx context.Context) error {
 		_, err := cli.Get(ctx, "a")
 		if isClientTimeout(err) || isServerCtxTimeout(err) {
 			return errExpected
@@ -95,13 +95,13 @@ func TestBalancerUnderNetworkPartitionLinearizableGetWithShortTimeout(t *testing
 }
 
 func TestBalancerUnderNetworkPartitionSerializableGet(t *testing.T) {
-	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
-		_, err := cli.Get(ctx, "a", clientv3.WithSerializable())
+	testBalancerUnderNetworkPartition(t, func(cli *etcdc.Client, ctx context.Context) error {
+		_, err := cli.Get(ctx, "a", etcdc.WithSerializable())
 		return err
 	}, time.Second)
 }
 
-func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, context.Context) error, timeout time.Duration) {
+func testBalancerUnderNetworkPartition(t *testing.T, op func(*etcdc.Client, context.Context) error, timeout time.Duration) {
 	defer testutil.AfterTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
@@ -113,12 +113,12 @@ func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, c
 	eps := []string{clus.Members[0].GRPCAddr(), clus.Members[1].GRPCAddr(), clus.Members[2].GRPCAddr()}
 
 	// expect pin eps[0]
-	ccfg := clientv3.Config{
+	ccfg := etcdc.Config{
 		Endpoints:   []string{eps[0]},
 		DialTimeout: 3 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
-	cli, err := clientv3.New(ccfg)
+	cli, err := etcdc.New(ccfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +170,7 @@ func TestBalancerUnderNetworkPartitionLinearizableGetLeaderElection(t *testing.T
 
 	timeout := 3 * clus.Members[(lead+1)%2].ServerConfig.ReqTimeout()
 
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := etcdc.New(etcdc.Config{
 		Endpoints:   []string{eps[(lead+1)%2]},
 		DialTimeout: 2 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
@@ -228,7 +228,7 @@ func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
 	}
 
 	// pin eps[target]
-	watchCli, err := clientv3.New(clientv3.Config{Endpoints: []string{eps[target]}})
+	watchCli, err := etcdc.New(etcdc.Config{Endpoints: []string{eps[target]}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -241,7 +241,7 @@ func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
 	// the client can switch to other available eps
 	watchCli.SetEndpoints(eps...)
 
-	wch := watchCli.Watch(clientv3.WithRequireLeader(context.Background()), "foo", clientv3.WithCreatedNotify())
+	wch := watchCli.Watch(etcdc.WithRequireLeader(context.Background()), "foo", etcdc.WithCreatedNotify())
 	select {
 	case <-wch:
 	case <-time.After(integration.RequestWaitTimeout):
@@ -278,12 +278,12 @@ func TestDropReadUnderNetworkPartition(t *testing.T) {
 	leaderIndex := clus.WaitLeader(t)
 	// get a follower endpoint
 	eps := []string{clus.Members[(leaderIndex+1)%3].GRPCAddr()}
-	ccfg := clientv3.Config{
+	ccfg := etcdc.Config{
 		Endpoints:   eps,
 		DialTimeout: 10 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
-	cli, err := clientv3.New(ccfg)
+	cli, err := etcdc.New(ccfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -302,7 +302,7 @@ func TestDropReadUnderNetworkPartition(t *testing.T) {
 	defer conn.Close()
 
 	clus.Members[leaderIndex].InjectPartition(t, clus.Members[(leaderIndex+1)%3], clus.Members[(leaderIndex+2)%3])
-	kvc := clientv3.NewKVFromKVClient(pb.NewKVClient(conn), nil)
+	kvc := etcdc.NewKVFromKVClient(pb.NewKVClient(conn), nil)
 	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
 	_, err = kvc.Get(ctx, "a")
 	cancel()

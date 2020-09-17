@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"go.etcd.io/etcd/integration"
 	"go.etcd.io/etcd/pkg/testutil"
@@ -46,7 +46,7 @@ func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 	lead := clus.WaitLeader(t)
 
 	// pin eps[lead]
-	watchCli, err := clientv3.New(clientv3.Config{Endpoints: []string{eps[lead]}})
+	watchCli, err := etcdc.New(etcdc.Config{Endpoints: []string{eps[lead]}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 	watchCli.SetEndpoints(eps...)
 
 	key, val := "foo", "bar"
-	wch := watchCli.Watch(context.Background(), key, clientv3.WithCreatedNotify())
+	wch := watchCli.Watch(context.Background(), key, etcdc.WithCreatedNotify())
 	select {
 	case <-wch:
 	case <-time.After(integration.RequestWaitTimeout):
@@ -92,7 +92,7 @@ func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 	clus.Members[lead].Terminate(t)
 
 	// writes to eps[lead+1]
-	putCli, err := clientv3.New(clientv3.Config{Endpoints: []string{eps[(lead+1)%3]}})
+	putCli, err := etcdc.New(etcdc.Config{Endpoints: []string{eps[(lead+1)%3]}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,25 +118,25 @@ func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 }
 
 func TestBalancerUnderServerShutdownPut(t *testing.T) {
-	testBalancerUnderServerShutdownMutable(t, func(cli *clientv3.Client, ctx context.Context) error {
+	testBalancerUnderServerShutdownMutable(t, func(cli *etcdc.Client, ctx context.Context) error {
 		_, err := cli.Put(ctx, "foo", "bar")
 		return err
 	})
 }
 
 func TestBalancerUnderServerShutdownDelete(t *testing.T) {
-	testBalancerUnderServerShutdownMutable(t, func(cli *clientv3.Client, ctx context.Context) error {
+	testBalancerUnderServerShutdownMutable(t, func(cli *etcdc.Client, ctx context.Context) error {
 		_, err := cli.Delete(ctx, "foo")
 		return err
 	})
 }
 
 func TestBalancerUnderServerShutdownTxn(t *testing.T) {
-	testBalancerUnderServerShutdownMutable(t, func(cli *clientv3.Client, ctx context.Context) error {
+	testBalancerUnderServerShutdownMutable(t, func(cli *etcdc.Client, ctx context.Context) error {
 		_, err := cli.Txn(ctx).
-			If(clientv3.Compare(clientv3.Version("foo"), "=", 0)).
-			Then(clientv3.OpPut("foo", "bar")).
-			Else(clientv3.OpPut("foo", "baz")).Commit()
+			If(etcdc.Compare(etcdc.Version("foo"), "=", 0)).
+			Then(etcdc.OpPut("foo", "bar")).
+			Else(etcdc.OpPut("foo", "baz")).Commit()
 		return err
 	})
 }
@@ -144,7 +144,7 @@ func TestBalancerUnderServerShutdownTxn(t *testing.T) {
 // testBalancerUnderServerShutdownMutable expects that when the member of
 // the pinned endpoint is shut down, the balancer switches its endpoints
 // and all subsequent put/delete/txn requests succeed with new endpoints.
-func testBalancerUnderServerShutdownMutable(t *testing.T, op func(*clientv3.Client, context.Context) error) {
+func testBalancerUnderServerShutdownMutable(t *testing.T, op func(*etcdc.Client, context.Context) error) {
 	defer testutil.AfterTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
@@ -156,7 +156,7 @@ func testBalancerUnderServerShutdownMutable(t *testing.T, op func(*clientv3.Clie
 	eps := []string{clus.Members[0].GRPCAddr(), clus.Members[1].GRPCAddr(), clus.Members[2].GRPCAddr()}
 
 	// pin eps[0]
-	cli, err := clientv3.New(clientv3.Config{Endpoints: []string{eps[0]}})
+	cli, err := etcdc.New(etcdc.Config{Endpoints: []string{eps[0]}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,15 +186,15 @@ func testBalancerUnderServerShutdownMutable(t *testing.T, op func(*clientv3.Clie
 }
 
 func TestBalancerUnderServerShutdownGetLinearizable(t *testing.T) {
-	testBalancerUnderServerShutdownImmutable(t, func(cli *clientv3.Client, ctx context.Context) error {
+	testBalancerUnderServerShutdownImmutable(t, func(cli *etcdc.Client, ctx context.Context) error {
 		_, err := cli.Get(ctx, "foo")
 		return err
 	}, 7*time.Second) // give enough time for leader election, balancer switch
 }
 
 func TestBalancerUnderServerShutdownGetSerializable(t *testing.T) {
-	testBalancerUnderServerShutdownImmutable(t, func(cli *clientv3.Client, ctx context.Context) error {
-		_, err := cli.Get(ctx, "foo", clientv3.WithSerializable())
+	testBalancerUnderServerShutdownImmutable(t, func(cli *etcdc.Client, ctx context.Context) error {
+		_, err := cli.Get(ctx, "foo", etcdc.WithSerializable())
 		return err
 	}, 2*time.Second)
 }
@@ -202,7 +202,7 @@ func TestBalancerUnderServerShutdownGetSerializable(t *testing.T) {
 // testBalancerUnderServerShutdownImmutable expects that when the member of
 // the pinned endpoint is shut down, the balancer switches its endpoints
 // and all subsequent range requests succeed with new endpoints.
-func testBalancerUnderServerShutdownImmutable(t *testing.T, op func(*clientv3.Client, context.Context) error, timeout time.Duration) {
+func testBalancerUnderServerShutdownImmutable(t *testing.T, op func(*etcdc.Client, context.Context) error, timeout time.Duration) {
 	defer testutil.AfterTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
@@ -214,7 +214,7 @@ func testBalancerUnderServerShutdownImmutable(t *testing.T, op func(*clientv3.Cl
 	eps := []string{clus.Members[0].GRPCAddr(), clus.Members[1].GRPCAddr(), clus.Members[2].GRPCAddr()}
 
 	// pin eps[0]
-	cli, err := clientv3.New(clientv3.Config{Endpoints: []string{eps[0]}})
+	cli, err := etcdc.New(etcdc.Config{Endpoints: []string{eps[0]}})
 	if err != nil {
 		t.Errorf("failed to create client: %v", err)
 	}
@@ -297,7 +297,7 @@ func testBalancerUnderServerStopInflightRangeOnRestart(t *testing.T, linearizabl
 	}
 
 	// pin eps[target]
-	cli, err := clientv3.New(clientv3.Config{Endpoints: []string{eps[target]}})
+	cli, err := etcdc.New(etcdc.Config{Endpoints: []string{eps[target]}})
 	if err != nil {
 		t.Errorf("failed to create client: %v", err)
 	}
@@ -327,9 +327,9 @@ func testBalancerUnderServerStopInflightRangeOnRestart(t *testing.T, linearizabl
 	// TODO: decrease timeout when balancer switch rewrite
 	clientTimeout := 7 * time.Second
 
-	var gops []clientv3.OpOption
+	var gops []etcdc.OpOption
 	if !linearizable {
-		gops = append(gops, clientv3.WithSerializable())
+		gops = append(gops, etcdc.WithSerializable())
 	}
 
 	donec, readyc := make(chan struct{}), make(chan struct{}, 1)

@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package clientv3_test
+package etcdc_test
 
 import (
 	"context"
 	"fmt"
 	"log"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 )
 
 func ExampleMaintenance_status() {
 	for _, ep := range endpoints {
-		cli, err := clientv3.New(clientv3.Config{
+		cli, err := etcdc.New(etcdc.Config{
 			Endpoints:   []string{ep},
 			DialTimeout: dialTimeout,
 		})
@@ -46,7 +46,7 @@ func ExampleMaintenance_status() {
 
 func ExampleMaintenance_defragment() {
 	for _, ep := range endpoints {
-		cli, err := clientv3.New(clientv3.Config{
+		cli, err := etcdc.New(etcdc.Config{
 			Endpoints:   []string{ep},
 			DialTimeout: dialTimeout,
 		})

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package clientv3_test
+package etcdc_test
 
 import (
 	"context"
@@ -20,7 +20,7 @@ import (
 	"os"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 	"go.etcd.io/etcd/pkg/transport"
 
 	"google.golang.org/grpc/grpclog"
@@ -33,9 +33,9 @@ var (
 )
 
 func Example() {
-	clientv3.SetLogger(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
+	etcdc.SetLogger(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
 
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := etcdc.New(etcdc.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 	})
@@ -60,7 +60,7 @@ func ExampleConfig_withTLS() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := etcdc.New(etcdc.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 		TLS:         tlsConfig,

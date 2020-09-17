@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package clientv3_test
+package etcdc_test
 
 import (
 	"context"
 	"fmt"
 	"log"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 )
 
 func ExampleKV_put() {
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := etcdc.New(etcdc.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 	})
@@ -42,7 +42,7 @@ func ExampleKV_put() {
 }
 
 func ExampleKV_putErrorHandling() {
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := etcdc.New(etcdc.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 	})
@@ -70,7 +70,7 @@ func ExampleKV_putErrorHandling() {
 }
 
 func ExampleKV_get() {
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := etcdc.New(etcdc.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 	})
@@ -97,7 +97,7 @@ func ExampleKV_get() {
 }
 
 func ExampleKV_getWithRev() {
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := etcdc.New(etcdc.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 	})
@@ -116,7 +116,7 @@ func ExampleKV_getWithRev() {
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	resp, err := cli.Get(ctx, "foo", clientv3.WithRev(presp.Header.Revision))
+	resp, err := cli.Get(ctx, "foo", etcdc.WithRev(presp.Header.Revision))
 	cancel()
 	if err != nil {
 		log.Fatal(err)
@@ -128,7 +128,7 @@ func ExampleKV_getWithRev() {
 }
 
 func ExampleKV_getSortedPrefix() {
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := etcdc.New(etcdc.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 	})
@@ -147,7 +147,7 @@ func ExampleKV_getSortedPrefix() {
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	resp, err := cli.Get(ctx, "key", clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortDescend))
+	resp, err := cli.Get(ctx, "key", etcdc.WithPrefix(), etcdc.WithSort(etcdc.SortByKey, etcdc.SortDescend))
 	cancel()
 	if err != nil {
 		log.Fatal(err)
@@ -162,7 +162,7 @@ func ExampleKV_getSortedPrefix() {
 }
 
 func ExampleKV_delete() {
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := etcdc.New(etcdc.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 	})
@@ -175,13 +175,13 @@ func ExampleKV_delete() {
 	defer cancel()
 
 	// count keys about to be deleted
-	gresp, err := cli.Get(ctx, "key", clientv3.WithPrefix())
+	gresp, err := cli.Get(ctx, "key", etcdc.WithPrefix())
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// delete the keys
-	dresp, err := cli.Delete(ctx, "key", clientv3.WithPrefix())
+	dresp, err := cli.Delete(ctx, "key", etcdc.WithPrefix())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -192,7 +192,7 @@ func ExampleKV_delete() {
 }
 
 func ExampleKV_compact() {
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := etcdc.New(etcdc.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 	})
@@ -218,7 +218,7 @@ func ExampleKV_compact() {
 }
 
 func ExampleKV_txn() {
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := etcdc.New(etcdc.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 	})
@@ -227,7 +227,7 @@ func ExampleKV_txn() {
 	}
 	defer cli.Close()
 
-	kvc := clientv3.NewKV(cli)
+	kvc := etcdc.NewKV(cli)
 
 	_, err = kvc.Put(context.TODO(), "key", "xyz")
 	if err != nil {
@@ -237,11 +237,11 @@ func ExampleKV_txn() {
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	_, err = kvc.Txn(ctx).
 		// txn value comparisons are lexical
-		If(clientv3.Compare(clientv3.Value("key"), ">", "abc")).
+		If(etcdc.Compare(etcdc.Value("key"), ">", "abc")).
 		// the "Then" runs, since "xyz" > "abc"
-		Then(clientv3.OpPut("key", "XYZ")).
+		Then(etcdc.OpPut("key", "XYZ")).
 		// the "Else" does not run
-		Else(clientv3.OpPut("key", "ABC")).
+		Else(etcdc.OpPut("key", "ABC")).
 		Commit()
 	cancel()
 	if err != nil {
@@ -260,7 +260,7 @@ func ExampleKV_txn() {
 }
 
 func ExampleKV_do() {
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := etcdc.New(etcdc.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 	})
@@ -269,10 +269,10 @@ func ExampleKV_do() {
 	}
 	defer cli.Close()
 
-	ops := []clientv3.Op{
-		clientv3.OpPut("put-key", "123"),
-		clientv3.OpGet("put-key"),
-		clientv3.OpPut("put-key", "456")}
+	ops := []etcdc.Op{
+		etcdc.OpPut("put-key", "123"),
+		etcdc.OpGet("put-key"),
+		etcdc.OpPut("put-key", "456")}
 
 	for _, op := range ops {
 		if _, err := cli.Do(context.TODO(), op); err != nil {

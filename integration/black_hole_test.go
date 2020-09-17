@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"go.etcd.io/etcd/integration"
 	"go.etcd.io/etcd/pkg/testutil"
@@ -42,7 +42,7 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 
 	eps := []string{clus.Members[0].GRPCAddr(), clus.Members[1].GRPCAddr()}
 
-	ccfg := clientv3.Config{
+	ccfg := etcdc.Config{
 		Endpoints:            []string{eps[0]},
 		DialTimeout:          time.Second,
 		DialOptions:          []grpc.DialOption{grpc.WithBlock()},
@@ -58,13 +58,13 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 	// then we can reduce 3s to 1s.
 	timeout := pingInterval + integration.RequestWaitTimeout
 
-	cli, err := clientv3.New(ccfg)
+	cli, err := etcdc.New(ccfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer cli.Close()
 
-	wch := cli.Watch(context.Background(), "foo", clientv3.WithCreatedNotify())
+	wch := cli.Watch(context.Background(), "foo", etcdc.WithCreatedNotify())
 	if _, ok := <-wch; !ok {
 		t.Fatalf("watch failed on creation")
 	}
@@ -109,7 +109,7 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 }
 
 func TestBalancerUnderBlackholeNoKeepAlivePut(t *testing.T) {
-	testBalancerUnderBlackholeNoKeepAlive(t, func(cli *clientv3.Client, ctx context.Context) error {
+	testBalancerUnderBlackholeNoKeepAlive(t, func(cli *etcdc.Client, ctx context.Context) error {
 		_, err := cli.Put(ctx, "foo", "bar")
 		if isClientTimeout(err) || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
@@ -119,7 +119,7 @@ func TestBalancerUnderBlackholeNoKeepAlivePut(t *testing.T) {
 }
 
 func TestBalancerUnderBlackholeNoKeepAliveDelete(t *testing.T) {
-	testBalancerUnderBlackholeNoKeepAlive(t, func(cli *clientv3.Client, ctx context.Context) error {
+	testBalancerUnderBlackholeNoKeepAlive(t, func(cli *etcdc.Client, ctx context.Context) error {
 		_, err := cli.Delete(ctx, "foo")
 		if isClientTimeout(err) || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
@@ -129,11 +129,11 @@ func TestBalancerUnderBlackholeNoKeepAliveDelete(t *testing.T) {
 }
 
 func TestBalancerUnderBlackholeNoKeepAliveTxn(t *testing.T) {
-	testBalancerUnderBlackholeNoKeepAlive(t, func(cli *clientv3.Client, ctx context.Context) error {
+	testBalancerUnderBlackholeNoKeepAlive(t, func(cli *etcdc.Client, ctx context.Context) error {
 		_, err := cli.Txn(ctx).
-			If(clientv3.Compare(clientv3.Version("foo"), "=", 0)).
-			Then(clientv3.OpPut("foo", "bar")).
-			Else(clientv3.OpPut("foo", "baz")).Commit()
+			If(etcdc.Compare(etcdc.Version("foo"), "=", 0)).
+			Then(etcdc.OpPut("foo", "bar")).
+			Else(etcdc.OpPut("foo", "baz")).Commit()
 		if isClientTimeout(err) || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
 		}
@@ -142,7 +142,7 @@ func TestBalancerUnderBlackholeNoKeepAliveTxn(t *testing.T) {
 }
 
 func TestBalancerUnderBlackholeNoKeepAliveLinearizableGet(t *testing.T) {
-	testBalancerUnderBlackholeNoKeepAlive(t, func(cli *clientv3.Client, ctx context.Context) error {
+	testBalancerUnderBlackholeNoKeepAlive(t, func(cli *etcdc.Client, ctx context.Context) error {
 		_, err := cli.Get(ctx, "a")
 		if isClientTimeout(err) || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
@@ -152,8 +152,8 @@ func TestBalancerUnderBlackholeNoKeepAliveLinearizableGet(t *testing.T) {
 }
 
 func TestBalancerUnderBlackholeNoKeepAliveSerializableGet(t *testing.T) {
-	testBalancerUnderBlackholeNoKeepAlive(t, func(cli *clientv3.Client, ctx context.Context) error {
-		_, err := cli.Get(ctx, "a", clientv3.WithSerializable())
+	testBalancerUnderBlackholeNoKeepAlive(t, func(cli *etcdc.Client, ctx context.Context) error {
+		_, err := cli.Get(ctx, "a", etcdc.WithSerializable())
 		if isClientTimeout(err) || isServerCtxTimeout(err) {
 			return errExpected
 		}
@@ -163,7 +163,7 @@ func TestBalancerUnderBlackholeNoKeepAliveSerializableGet(t *testing.T) {
 
 // testBalancerUnderBlackholeNoKeepAlive ensures that first request to blackholed endpoint
 // fails due to context timeout, but succeeds on next try, with endpoint switch.
-func testBalancerUnderBlackholeNoKeepAlive(t *testing.T, op func(*clientv3.Client, context.Context) error) {
+func testBalancerUnderBlackholeNoKeepAlive(t *testing.T, op func(*etcdc.Client, context.Context) error) {
 	defer testutil.AfterTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
@@ -174,12 +174,12 @@ func testBalancerUnderBlackholeNoKeepAlive(t *testing.T, op func(*clientv3.Clien
 
 	eps := []string{clus.Members[0].GRPCAddr(), clus.Members[1].GRPCAddr()}
 
-	ccfg := clientv3.Config{
+	ccfg := etcdc.Config{
 		Endpoints:   []string{eps[0]},
 		DialTimeout: 1 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
-	cli, err := clientv3.New(ccfg)
+	cli, err := etcdc.New(ccfg)
 	if err != nil {
 		t.Fatal(err)
 	}

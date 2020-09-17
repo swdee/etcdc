@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"go.etcd.io/etcd/integration"
 	"go.etcd.io/etcd/pkg/testutil"
@@ -70,22 +70,22 @@ func TestUserErrorAuth(t *testing.T) {
 	}
 
 	// wrong id or password
-	cfg := clientv3.Config{
+	cfg := etcdc.Config{
 		Endpoints:   authapi.Endpoints(),
 		DialTimeout: 5 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
 	cfg.Username, cfg.Password = "wrong-id", "123"
-	if _, err := clientv3.New(cfg); err != rpctypes.ErrAuthFailed {
+	if _, err := etcdc.New(cfg); err != rpctypes.ErrAuthFailed {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrAuthFailed, err)
 	}
 	cfg.Username, cfg.Password = "root", "wrong-pass"
-	if _, err := clientv3.New(cfg); err != rpctypes.ErrAuthFailed {
+	if _, err := etcdc.New(cfg); err != rpctypes.ErrAuthFailed {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrAuthFailed, err)
 	}
 
 	cfg.Username, cfg.Password = "root", "123"
-	authed, err := clientv3.New(cfg)
+	authed, err := etcdc.New(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestUserErrorAuth(t *testing.T) {
 	}
 }
 
-func authSetupRoot(t *testing.T, auth clientv3.Auth) {
+func authSetupRoot(t *testing.T, auth etcdc.Auth) {
 	if _, err := auth.UserAdd(context.TODO(), "root", "123"); err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func TestGetTokenWithoutAuth(t *testing.T) {
 	authapi := clus.RandClient()
 
 	var err error
-	var client *clientv3.Client
+	var client *etcdc.Client
 
 	// make sure "auth" was disabled
 	if _, err = authapi.AuthDisable(context.TODO()); err != nil {
@@ -128,14 +128,14 @@ func TestGetTokenWithoutAuth(t *testing.T) {
 	}
 
 	// "Username" and "Password" must be used
-	cfg := clientv3.Config{
+	cfg := etcdc.Config{
 		Endpoints:   authapi.Endpoints(),
 		DialTimeout: 1 * time.Second, // make sure all connection time of connect all endpoint must be more DialTimeout
 		Username:    "root",
 		Password:    "123",
 	}
 
-	client, err = clientv3.New(cfg)
+	client, err = etcdc.New(cfg)
 	if err == nil {
 		defer client.Close()
 	}

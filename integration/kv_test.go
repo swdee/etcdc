@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/swdee/etcdc"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"go.etcd.io/etcd/integration"
 	"go.etcd.io/etcd/mvcc/mvccpb"
@@ -87,14 +87,14 @@ func TestKVPut(t *testing.T) {
 
 	tests := []struct {
 		key, val string
-		leaseID  clientv3.LeaseID
+		leaseID  etcdc.LeaseID
 	}{
-		{"foo", "bar", clientv3.NoLease},
+		{"foo", "bar", etcdc.NoLease},
 		{"hello", "world", resp.ID},
 	}
 
 	for i, tt := range tests {
-		if _, err := kv.Put(ctx, tt.key, tt.val, clientv3.WithLease(tt.leaseID)); err != nil {
+		if _, err := kv.Put(ctx, tt.key, tt.val, etcdc.WithLease(tt.leaseID)); err != nil {
 			t.Fatalf("#%d: couldn't put %q (%v)", i, tt.key, err)
 		}
 		resp, err := kv.Get(ctx, tt.key)
@@ -107,7 +107,7 @@ func TestKVPut(t *testing.T) {
 		if !bytes.Equal([]byte(tt.val), resp.Kvs[0].Value) {
 			t.Errorf("#%d: val = %s, want %s", i, tt.val, resp.Kvs[0].Value)
 		}
-		if tt.leaseID != clientv3.LeaseID(resp.Kvs[0].Lease) {
+		if tt.leaseID != etcdc.LeaseID(resp.Kvs[0].Lease) {
 			t.Errorf("#%d: val = %d, want %d", i, tt.leaseID, resp.Kvs[0].Lease)
 		}
 	}
@@ -122,7 +122,7 @@ func TestKVPutWithIgnoreValue(t *testing.T) {
 
 	kv := clus.RandClient()
 
-	_, err := kv.Put(context.TODO(), "foo", "", clientv3.WithIgnoreValue())
+	_, err := kv.Put(context.TODO(), "foo", "", etcdc.WithIgnoreValue())
 	if err != rpctypes.ErrKeyNotFound {
 		t.Fatalf("err expected %v, got %v", rpctypes.ErrKeyNotFound, err)
 	}
@@ -131,7 +131,7 @@ func TestKVPutWithIgnoreValue(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := kv.Put(context.TODO(), "foo", "", clientv3.WithIgnoreValue()); err != nil {
+	if _, err := kv.Put(context.TODO(), "foo", "", etcdc.WithIgnoreValue()); err != nil {
 		t.Fatal(err)
 	}
 	rr, rerr := kv.Get(context.TODO(), "foo")
@@ -162,15 +162,15 @@ func TestKVPutWithIgnoreLease(t *testing.T) {
 		t.Errorf("failed to create lease %v", err)
 	}
 
-	if _, err := kv.Put(context.TODO(), "zoo", "bar", clientv3.WithIgnoreLease()); err != rpctypes.ErrKeyNotFound {
+	if _, err := kv.Put(context.TODO(), "zoo", "bar", etcdc.WithIgnoreLease()); err != rpctypes.ErrKeyNotFound {
 		t.Fatalf("err expected %v, got %v", rpctypes.ErrKeyNotFound, err)
 	}
 
-	if _, err := kv.Put(context.TODO(), "zoo", "bar", clientv3.WithLease(resp.ID)); err != nil {
+	if _, err := kv.Put(context.TODO(), "zoo", "bar", etcdc.WithLease(resp.ID)); err != nil {
 		t.Fatal(err)
 	}
 
-	if _, err := kv.Put(context.TODO(), "zoo", "bar1", clientv3.WithIgnoreLease()); err != nil {
+	if _, err := kv.Put(context.TODO(), "zoo", "bar1", etcdc.WithIgnoreLease()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -203,7 +203,7 @@ func TestKVPutWithRequireLeader(t *testing.T) {
 	time.Sleep(time.Duration(3*electionTicks) * tickDuration)
 
 	kv := clus.Client(0)
-	_, err := kv.Put(clientv3.WithRequireLeader(context.Background()), "foo", "bar")
+	_, err := kv.Put(etcdc.WithRequireLeader(context.Background()), "foo", "bar")
 	if err != rpctypes.ErrNoLeader {
 		t.Fatal(err)
 	}
@@ -240,7 +240,7 @@ func TestKVRange(t *testing.T) {
 	tests := []struct {
 		begin, end string
 		rev        int64
-		opts       []clientv3.OpOption
+		opts       []etcdc.OpOption
 
 		wantSet []*mvccpb.KeyValue
 	}{
@@ -259,7 +259,7 @@ func TestKVRange(t *testing.T) {
 		{
 			"a", "c",
 			0,
-			[]clientv3.OpOption{clientv3.WithSerializable()},
+			[]etcdc.OpOption{etcdc.WithSerializable()},
 
 			[]*mvccpb.KeyValue{
 				{Key: []byte("a"), Value: nil, CreateRevision: 2, ModRevision: 2, Version: 1},
@@ -280,7 +280,7 @@ func TestKVRange(t *testing.T) {
 		{
 			"a", "x",
 			2,
-			[]clientv3.OpOption{clientv3.WithCountOnly()},
+			[]etcdc.OpOption{etcdc.WithCountOnly()},
 
 			nil,
 		},
@@ -288,7 +288,7 @@ func TestKVRange(t *testing.T) {
 		{
 			"a", "x",
 			0,
-			[]clientv3.OpOption{clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend)},
+			[]etcdc.OpOption{etcdc.WithSort(etcdc.SortByKey, etcdc.SortAscend)},
 
 			[]*mvccpb.KeyValue{
 				{Key: []byte("a"), Value: nil, CreateRevision: 2, ModRevision: 2, Version: 1},
@@ -303,7 +303,7 @@ func TestKVRange(t *testing.T) {
 		{
 			"a", "x",
 			0,
-			[]clientv3.OpOption{clientv3.WithSort(clientv3.SortByKey, clientv3.SortNone)},
+			[]etcdc.OpOption{etcdc.WithSort(etcdc.SortByKey, etcdc.SortNone)},
 
 			[]*mvccpb.KeyValue{
 				{Key: []byte("a"), Value: nil, CreateRevision: 2, ModRevision: 2, Version: 1},
@@ -318,7 +318,7 @@ func TestKVRange(t *testing.T) {
 		{
 			"a", "x",
 			0,
-			[]clientv3.OpOption{clientv3.WithSort(clientv3.SortByCreateRevision, clientv3.SortDescend)},
+			[]etcdc.OpOption{etcdc.WithSort(etcdc.SortByCreateRevision, etcdc.SortDescend)},
 
 			[]*mvccpb.KeyValue{
 				{Key: []byte("fop"), Value: nil, CreateRevision: 9, ModRevision: 9, Version: 1},
@@ -333,7 +333,7 @@ func TestKVRange(t *testing.T) {
 		{
 			"a", "x",
 			0,
-			[]clientv3.OpOption{clientv3.WithSort(clientv3.SortByCreateRevision, clientv3.SortNone)},
+			[]etcdc.OpOption{etcdc.WithSort(etcdc.SortByCreateRevision, etcdc.SortNone)},
 
 			[]*mvccpb.KeyValue{
 				{Key: []byte("a"), Value: nil, CreateRevision: 2, ModRevision: 2, Version: 1},
@@ -348,7 +348,7 @@ func TestKVRange(t *testing.T) {
 		{
 			"a", "x",
 			0,
-			[]clientv3.OpOption{clientv3.WithSort(clientv3.SortByModRevision, clientv3.SortDescend)},
+			[]etcdc.OpOption{etcdc.WithSort(etcdc.SortByModRevision, etcdc.SortDescend)},
 
 			[]*mvccpb.KeyValue{
 				{Key: []byte("fop"), Value: nil, CreateRevision: 9, ModRevision: 9, Version: 1},
@@ -363,7 +363,7 @@ func TestKVRange(t *testing.T) {
 		{
 			"foo", "",
 			0,
-			[]clientv3.OpOption{clientv3.WithPrefix()},
+			[]etcdc.OpOption{etcdc.WithPrefix()},
 
 			[]*mvccpb.KeyValue{
 				{Key: []byte("foo"), Value: nil, CreateRevision: 7, ModRevision: 7, Version: 1},
@@ -374,7 +374,7 @@ func TestKVRange(t *testing.T) {
 		{
 			"fo", "",
 			0,
-			[]clientv3.OpOption{clientv3.WithFromKey()},
+			[]etcdc.OpOption{etcdc.WithFromKey()},
 
 			[]*mvccpb.KeyValue{
 				{Key: []byte("foo"), Value: nil, CreateRevision: 7, ModRevision: 7, Version: 1},
@@ -386,7 +386,7 @@ func TestKVRange(t *testing.T) {
 		{
 			"\x00", "",
 			0,
-			[]clientv3.OpOption{clientv3.WithFromKey(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend)},
+			[]etcdc.OpOption{etcdc.WithFromKey(), etcdc.WithSort(etcdc.SortByKey, etcdc.SortAscend)},
 
 			[]*mvccpb.KeyValue{
 				{Key: []byte("a"), Value: nil, CreateRevision: 2, ModRevision: 2, Version: 1},
@@ -401,7 +401,7 @@ func TestKVRange(t *testing.T) {
 		{
 			"", "",
 			0,
-			[]clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend)},
+			[]etcdc.OpOption{etcdc.WithPrefix(), etcdc.WithSort(etcdc.SortByKey, etcdc.SortAscend)},
 
 			[]*mvccpb.KeyValue{
 				{Key: []byte("a"), Value: nil, CreateRevision: 2, ModRevision: 2, Version: 1},
@@ -416,7 +416,7 @@ func TestKVRange(t *testing.T) {
 		{
 			"", "",
 			0,
-			[]clientv3.OpOption{clientv3.WithFromKey(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend)},
+			[]etcdc.OpOption{etcdc.WithFromKey(), etcdc.WithSort(etcdc.SortByKey, etcdc.SortAscend)},
 
 			[]*mvccpb.KeyValue{
 				{Key: []byte("a"), Value: nil, CreateRevision: 2, ModRevision: 2, Version: 1},
@@ -430,7 +430,7 @@ func TestKVRange(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		opts := []clientv3.OpOption{clientv3.WithRange(tt.end), clientv3.WithRev(tt.rev)}
+		opts := []etcdc.OpOption{etcdc.WithRange(tt.end), etcdc.WithRev(tt.rev)}
 		opts = append(opts, tt.opts...)
 		resp, err := kv.Get(ctx, tt.begin, opts...)
 		if err != nil {
@@ -462,7 +462,7 @@ func TestKVGetErrConnClosed(t *testing.T) {
 	go func() {
 		defer close(donec)
 		_, err := cli.Get(context.TODO(), "foo")
-		if !clientv3.IsConnCanceled(err) {
+		if !etcdc.IsConnCanceled(err) {
 			t.Errorf("expected %v, got %v", context.Canceled, err)
 		}
 	}()
@@ -489,7 +489,7 @@ func TestKVNewAfterClose(t *testing.T) {
 	donec := make(chan struct{})
 	go func() {
 		_, err := cli.Get(context.TODO(), "foo")
-		if !clientv3.IsConnCanceled(err) {
+		if !etcdc.IsConnCanceled(err) {
 			t.Errorf("expected %v, got %v", context.Canceled, err)
 		}
 		close(donec)
@@ -512,35 +512,35 @@ func TestKVDeleteRange(t *testing.T) {
 
 	tests := []struct {
 		key  string
-		opts []clientv3.OpOption
+		opts []etcdc.OpOption
 
 		wkeys []string
 	}{
 		// [a, c)
 		{
 			key:  "a",
-			opts: []clientv3.OpOption{clientv3.WithRange("c")},
+			opts: []etcdc.OpOption{etcdc.WithRange("c")},
 
 			wkeys: []string{"c", "c/abc", "d"},
 		},
 		// >= c
 		{
 			key:  "c",
-			opts: []clientv3.OpOption{clientv3.WithFromKey()},
+			opts: []etcdc.OpOption{etcdc.WithFromKey()},
 
 			wkeys: []string{"a", "b"},
 		},
 		// c*
 		{
 			key:  "c",
-			opts: []clientv3.OpOption{clientv3.WithPrefix()},
+			opts: []etcdc.OpOption{etcdc.WithPrefix()},
 
 			wkeys: []string{"a", "b", "d"},
 		},
 		// *
 		{
 			key:  "\x00",
-			opts: []clientv3.OpOption{clientv3.WithFromKey()},
+			opts: []etcdc.OpOption{etcdc.WithFromKey()},
 
 			wkeys: []string{},
 		},
@@ -559,7 +559,7 @@ func TestKVDeleteRange(t *testing.T) {
 			t.Fatalf("#%d: couldn't delete range (%v)", i, err)
 		}
 
-		resp, err := kv.Get(ctx, "a", clientv3.WithFromKey())
+		resp, err := kv.Get(ctx, "a", etcdc.WithFromKey())
 		if err != nil {
 			t.Fatalf("#%d: couldn't get keys (%v)", i, err)
 		}
@@ -663,7 +663,7 @@ func TestKVCompact(t *testing.T) {
 	// new watcher could precede receiving the compaction without quorum first
 	wcli.Get(ctx, "quorum-get")
 
-	wchan := wcli.Watch(ctx, "foo", clientv3.WithRev(3))
+	wchan := wcli.Watch(ctx, "foo", etcdc.WithRev(3))
 
 	if wr := <-wchan; wr.CompactRevision != 7 {
 		t.Fatalf("wchan CompactRevision got %v, want 7", wr.CompactRevision)
@@ -996,18 +996,18 @@ func TestKVForLearner(t *testing.T) {
 	}
 	// note:
 	// 1. clus.Members[3] is the newly added learner member, which was appended to clus.Members
-	// 2. we are using member's grpcAddr instead of clientURLs as the endpoint for clientv3.Config,
+	// 2. we are using member's grpcAddr instead of clientURLs as the endpoint for etcdc.Config,
 	// because the implementation of integration test has diverged from embed/etcd.go.
 	learnerEp := clus.Members[3].GRPCAddr()
-	cfg := clientv3.Config{
+	cfg := etcdc.Config{
 		Endpoints:   []string{learnerEp},
 		DialTimeout: 5 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
 	// this client only has endpoint of the learner member
-	cli, err := clientv3.New(cfg)
+	cli, err := etcdc.New(cfg)
 	if err != nil {
-		t.Fatalf("failed to create clientv3: %v", err)
+		t.Fatalf("failed to create etcdc. %v", err)
 	}
 	defer cli.Close()
 
@@ -1015,27 +1015,27 @@ func TestKVForLearner(t *testing.T) {
 	<-clus.Members[3].ReadyNotify()
 
 	tests := []struct {
-		op   clientv3.Op
+		op   etcdc.Op
 		wErr bool
 	}{
 		{
-			op:   clientv3.OpGet("foo", clientv3.WithSerializable()),
+			op:   etcdc.OpGet("foo", etcdc.WithSerializable()),
 			wErr: false,
 		},
 		{
-			op:   clientv3.OpGet("foo"),
+			op:   etcdc.OpGet("foo"),
 			wErr: true,
 		},
 		{
-			op:   clientv3.OpPut("foo", "bar"),
+			op:   etcdc.OpPut("foo", "bar"),
 			wErr: true,
 		},
 		{
-			op:   clientv3.OpDelete("foo"),
+			op:   etcdc.OpDelete("foo"),
 			wErr: true,
 		},
 		{
-			op:   clientv3.OpTxn([]clientv3.Cmp{clientv3.Compare(clientv3.CreateRevision("foo"), "=", 0)}, nil, nil),
+			op:   etcdc.OpTxn([]etcdc.Cmp{etcdc.Compare(etcdc.CreateRevision("foo"), "=", 0)}, nil, nil),
 			wErr: true,
 		},
 	}
@@ -1072,14 +1072,14 @@ func TestBalancerSupportLearner(t *testing.T) {
 
 	// clus.Members[3] is the newly added learner member, which was appended to clus.Members
 	learnerEp := clus.Members[3].GRPCAddr()
-	cfg := clientv3.Config{
+	cfg := etcdc.Config{
 		Endpoints:   []string{learnerEp},
 		DialTimeout: 5 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
-	cli, err := clientv3.New(cfg)
+	cli, err := etcdc.New(cfg)
 	if err != nil {
-		t.Fatalf("failed to create clientv3: %v", err)
+		t.Fatalf("failed to create etcdc. %v", err)
 	}
 	defer cli.Close()
 

@@ -18,7 +18,7 @@ import (
 	"context"
 	"time"
 
-	v3 "go.etcd.io/etcd/clientv3"
+	v3 "github.com/swdee/etcdc"
 )
 
 const defaultSessionTTL = 60
